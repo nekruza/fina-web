@@ -22,11 +22,7 @@ export interface BuildProfileSummaryInput {
   favoriteWords: number;
   /** Surviving generated_lessons rows, shown as a stat. */
   generatedLessons: number;
-  /**
-   * Rows in the append-only vocabulary_generation_events log. This, not
-   * `generatedLessons`, is what uses up the free allowance, because deleting
-   * lessons must not hand generations back.
-   */
+  /** Generation usage counted from the current generated_lessons table. */
   generationEvents: number;
   now?: Date;
 }

@@ -75,7 +75,10 @@ export default function ProgressPage() {
           </p>
         ) : sessions.length === 0 ? (
           <div className="mt-6 flex flex-col items-center rounded-3xl border border-line bg-surface px-6 py-12 text-center">
-            <p className="text-base text-ink">No conversations yet</p>
+            <p className="text-base text-ink">Conversation history isn’t stored yet</p>
+            <p className="mt-2 max-w-sm text-sm text-sub">
+              Your streak is saved to your profile while conversation results remain available during the current practice session.
+            </p>
             <Link
               href="/app/roleplay"
               className="mt-4 inline-flex items-center justify-center rounded-full bg-ink px-6 py-3 text-sm font-semibold text-cream transition hover:bg-ink/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"

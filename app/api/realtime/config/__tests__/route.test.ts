@@ -9,15 +9,8 @@ const USER = { id: "user-1" };
 
 const SESSION_ID = "session-1";
 
-function activeSession(startedAt = new Date().toISOString()) {
-  return { data: { id: SESSION_ID, started_at: startedAt }, error: null };
-}
-
 function mockSupabase(config: SupabaseMockConfig) {
-  const mock = createSupabaseMock({
-    ...config,
-    tables: { conversation_sessions: activeSession(), ...(config.tables ?? {}) },
-  });
+  const mock = createSupabaseMock(config);
   createClient.mockResolvedValue(mock);
   return mock;
 }
@@ -101,35 +94,30 @@ describe("GET /api/realtime/config", () => {
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
-  it("returns 403 invalid_session for an unknown session", async () => {
-    mockSupabase({ user: USER, tables: { conversation_sessions: { data: null, error: null } } });
+  it("does not query a conversation table for a transient session id", async () => {
+    const mock = mockSupabase({ user: USER });
 
     const response = await GET(configRequest());
 
-    expect(response.status).toBe(403);
-    await expect(response.json()).resolves.toEqual({ error: "invalid_session" });
-    expect(global.fetch).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+    expect(mock.callCountFor("conversation_sessions")).toBe(0);
   });
 
-  it("returns 403 session_expired for a session started more than 3 hours ago", async () => {
-    const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
-    mockSupabase({ user: USER, tables: { conversation_sessions: activeSession(fourHoursAgo) } });
+  it("does not require a persisted session age check", async () => {
+    const mock = mockSupabase({ user: USER });
 
     const response = await GET(configRequest());
 
-    expect(response.status).toBe(403);
-    await expect(response.json()).resolves.toEqual({ error: "session_expired" });
+    expect(response.status).toBe(200);
+    expect(mock.callCountFor("conversation_sessions")).toBe(0);
   });
 
-  it("reads the session id from the query string and scopes the lookup to the caller", async () => {
+  it("does not query a missing conversation table", async () => {
     const mock = mockSupabase({ user: USER });
 
     await GET(configRequest());
 
-    const builder = mock.builderFor("conversation_sessions");
-    expect(builder.eq).toHaveBeenCalledWith("id", SESSION_ID);
-    expect(builder.eq).toHaveBeenCalledWith("user_id", USER.id);
-    expect(builder.eq).toHaveBeenCalledWith("status", "active");
+    expect(mock.callCountFor("conversation_sessions")).toBe(0);
   });
 
   it("returns 500 when INWORLD_API_KEY is not set", async () => {

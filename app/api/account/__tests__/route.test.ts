@@ -30,7 +30,6 @@ const DELETE_ORDER = [
   "custom_roleplays",
   "favorite_words",
   "lesson_progress",
-  "conversation_sessions",
   "profiles",
 ];
 

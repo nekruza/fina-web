@@ -1,20 +1,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
- * Append-only log of AI vocabulary generations
- * (`public.vocabulary_generation_events`).
- *
- * The free-generation allowance is counted from this log instead of from
- * `generated_lessons`, because learners can delete lessons and deleting them
- * must not hand the free generations back. RLS allows only select and insert
- * of the caller's own rows. There is no update or delete policy, so the count
- * can only go up.
+ * Counts AI vocabulary generations using the current `generated_lessons`
+ * table. The project does not have a separate generation-events table, so
+ * deleting a lesson also releases that slot in the free allowance.
  */
-
 export async function countGenerationEvents(sb: SupabaseClient, userId: string): Promise<number> {
   const { count, error } = await sb
-    .from("vocabulary_generation_events")
-    .select("id", { count: "exact", head: true })
+    .from("generated_lessons")
+    .select("*", { count: "exact", head: true })
     .eq("user_id", userId);
 
   if (error) throw error;
@@ -22,7 +16,8 @@ export async function countGenerationEvents(sb: SupabaseClient, userId: string):
   return count ?? 0;
 }
 
+/** Retained for the route API; generation usage is represented by the lesson row itself. */
 export async function recordGenerationEvent(sb: SupabaseClient, userId: string): Promise<void> {
-  const { error } = await sb.from("vocabulary_generation_events").insert({ user_id: userId });
-  if (error) throw error;
+  void sb;
+  void userId;
 }

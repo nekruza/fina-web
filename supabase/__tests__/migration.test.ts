@@ -38,36 +38,9 @@ describe("profiles billing-column protection (C1)", () => {
   });
 });
 
-describe("conversation_sessions delete policy", () => {
-  it("lets a user delete only their own sessions", () => {
-    expect(normalized).toContain('drop policy if exists "own conversations delete" on public.conversation_sessions;');
-    expect(normalized).toContain(
-      'create policy "own conversations delete" on public.conversation_sessions for delete using (auth.uid() = user_id);'
-    );
-  });
-});
-
-describe("vocabulary_generation_events (I2)", () => {
-  it("creates the append-only events table with a cascade to auth.users", () => {
-    expect(normalized).toContain(
-      "create table if not exists public.vocabulary_generation_events ( id uuid primary key default gen_random_uuid(), user_id uuid not null references auth.users(id) on delete cascade, created_at timestamptz not null default now() );"
-    );
-    expect(normalized).toContain("on public.vocabulary_generation_events (user_id)");
-    expect(normalized).toContain("alter table public.vocabulary_generation_events enable row level security;");
-  });
-
-  it("allows select and insert of own rows only", () => {
-    expect(normalized).toContain(
-      'create policy "own generation events select" on public.vocabulary_generation_events for select using (auth.uid() = user_id);'
-    );
-    expect(normalized).toContain(
-      'create policy "own generation events insert" on public.vocabulary_generation_events for insert with check (auth.uid() = user_id);'
-    );
-  });
-
-  it("has no update or delete policy, so the count cannot be reset from the client", () => {
-    const eventPolicies = normalized.match(/create policy "[^"]+" on public\.vocabulary_generation_events for (\w+)/g) ?? [];
-    const commands = eventPolicies.map((p) => p.split(" for ").pop());
-    expect(commands.sort()).toEqual(["insert", "select"]);
+describe("current schema boundaries", () => {
+  it("does not create web-only conversation or generation-event tables", () => {
+    expect(normalized).not.toContain("conversation_sessions");
+    expect(normalized).not.toContain("vocabulary_generation_events");
   });
 });

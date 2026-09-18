@@ -168,7 +168,7 @@ export function ConversationClient({ roleplayId, customId, tutorId: tutorParam }
         const res = await fetch("/api/ai/feedback", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages, language, level, durationSeconds: seconds }),
+          body: JSON.stringify({ messages, language, level, durationSeconds: seconds, sessionId }),
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         result = (await res.json()) as LanguageAnalysis;

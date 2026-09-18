@@ -36,36 +36,25 @@ const PROFILE_ROW = {
 function mockSupabase(opts: {
   user?: SupabaseMockConfig["user"];
   profile?: Record<string, unknown> | null;
-  conversationRows?: Record<string, unknown>[];
-  conversationsTotal?: number;
   completedLessonIds?: { lesson_id: string }[];
   favoriteWordIds?: { word_id: string }[];
   generatedLessonsCount?: number;
-  generationEventsCount?: number;
 }) {
   const {
     user = USER,
     profile = PROFILE_ROW,
-    conversationRows = [],
-    conversationsTotal = 0,
     completedLessonIds = [],
     favoriteWordIds = [],
     generatedLessonsCount = 0,
-    generationEventsCount = 0,
   } = opts;
 
   const mock = createSupabaseMock({
     user,
     tables: {
       profiles: { data: profile, error: null },
-      conversation_sessions: [
-        { data: conversationRows, error: null }, // conversationStats
-        { data: null, error: null, count: conversationsTotal }, // countConversations
-      ],
       lesson_progress: { data: completedLessonIds, error: null },
       favorite_words: { data: favoriteWordIds, error: null },
       generated_lessons: { data: null, error: null, count: generatedLessonsCount },
-      vocabulary_generation_events: { data: null, error: null, count: generationEventsCount },
     },
   });
   createClient.mockResolvedValue(mock);
@@ -92,12 +81,9 @@ describe("GET /api/profile", () => {
 
   it("returns the full ProfileSummary for the signed-in user", async () => {
     mockSupabase({
-      conversationRows: [{ overall_score: 80 }, { overall_score: 90 }],
-      conversationsTotal: 2,
       completedLessonIds: [{ lesson_id: "l1" }, { lesson_id: "l2" }],
       favoriteWordIds: [{ word_id: "w1" }],
       generatedLessonsCount: 1,
-      generationEventsCount: 1,
     });
 
     const res = await GET();
@@ -114,20 +100,20 @@ describe("GET /api/profile", () => {
       tutorId: "henry",
       dailyGoalMinutes: 20,
       onboarded: true,
-      stats: { conversationsCompleted: 2, avgOverallScore: 85, lessonsCompleted: 2, favoriteWords: 1, generatedLessons: 1 },
+      stats: { conversationsCompleted: 0, avgOverallScore: null, lessonsCompleted: 2, favoriteWords: 1, generatedLessons: 1 },
       pro: { isPro: false },
-      usage: { freeConversationsRemaining: 1, freeGenerationsRemaining: 2 },
+      usage: { freeConversationsRemaining: 3, freeGenerationsRemaining: 2 },
     });
   });
 
-  it("computes free generations from the append-only event log, not surviving lessons", async () => {
-    mockSupabase({ generatedLessonsCount: 0, generationEventsCount: 3 });
+  it("computes free generations from the current generated lessons table", async () => {
+    mockSupabase({ generatedLessonsCount: 3 });
 
     const res = await GET();
     const body = await res.json();
 
     expect(body.usage.freeGenerationsRemaining).toBe(0);
-    expect(body.stats.generatedLessons).toBe(0);
+    expect(body.stats.generatedLessons).toBe(3);
   });
 
   it("defaults a brand-new user with no profile row", async () => {
@@ -152,7 +138,6 @@ describe("GET /api/profile", () => {
   it("gives a pro user unlimited (999) usage regardless of consumption", async () => {
     mockSupabase({
       profile: { ...PROFILE_ROW, pro_status: "active", pro_current_period_end: null },
-      conversationsTotal: 10,
       generatedLessonsCount: 10,
     });
 

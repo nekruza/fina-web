@@ -3,21 +3,12 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripe } from "@/lib/stripe";
 
-/**
- * Deleted in dependency order so no orphaned rows are left behind on partial failure.
- *
- * `vocabulary_generation_events` is deliberately absent. It has no delete
- * policy (so the free-generation count can't be reset from the client), which
- * means an RLS-scoped delete here would silently match nothing. Its rows go
- * away with the auth user through `on delete cascade` when the admin client
- * deletes that user below.
- */
+/** Deleted in dependency order so no orphaned rows are left behind on partial failure. */
 const TABLES_TO_DELETE = [
   "generated_lessons",
   "custom_roleplays",
   "favorite_words",
   "lesson_progress",
-  "conversation_sessions",
   "profiles",
 ] as const;
 
