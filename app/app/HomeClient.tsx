@@ -7,6 +7,7 @@ import { useProfile, useUpdateProfile } from "@/lib/queries/profile";
 import { LanguageLevelSwitcher } from "@/components/home/LanguageLevelSwitcher";
 import { StreakCard } from "@/components/home/StreakCard";
 import { StudyPlanCard } from "@/components/home/StudyPlanCard";
+import { TutorWelcomeCard } from "@/components/home/TutorWelcomeCard";
 import { ProUpgradeDialog } from "@/components/ProUpgradeDialog";
 import { useFeedbackDialog } from "@/components/FeedbackProvider";
 import { DEFAULT_TUTOR_ID, isTutorId } from "@/lib/tutors";
@@ -99,6 +100,8 @@ export function HomeClient() {
           />
         </div>
       </header>
+
+      <TutorWelcomeCard />
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
         <div className="min-w-0 space-y-6">
