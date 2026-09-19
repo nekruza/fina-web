@@ -267,7 +267,7 @@ export function ConversationClient({ roleplayId, customId, tutorId: tutorParam }
       weeklyActivity: profile.streak.weeklyActivity,
     };
     return (
-      <div className="mx-auto w-full max-w-2xl space-y-6">
+      <div className="mx-auto w-full max-w-4xl space-y-6">
         <header>
           <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-sub">
             <span aria-hidden className="text-base">
@@ -307,7 +307,7 @@ export function ConversationClient({ roleplayId, customId, tutorId: tutorParam }
   const isGeneral = scenario.id === "general";
 
   return (
-    <div className="mx-auto w-full max-w-2xl">
+    <div className="mx-auto w-full max-w-3xl">
       <article className="overflow-hidden rounded-[2rem] border border-line bg-surface">
         <div className="px-6 pt-8 pb-6 sm:px-10 sm:pt-10">
           <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-sub">
@@ -405,7 +405,7 @@ export function ConversationClient({ roleplayId, customId, tutorId: tutorParam }
 
 export function SetupSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-2xl" aria-busy="true" aria-label="Loading conversation">
+    <div className="mx-auto w-full max-w-3xl" aria-busy="true" aria-label="Loading conversation">
       <div className="rounded-[2rem] border border-line bg-surface px-6 py-10 sm:px-10">
         <div className="h-3 w-32 rounded bg-line motion-safe:animate-pulse" />
         <div className="mt-4 h-10 w-2/3 rounded-lg bg-line motion-safe:animate-pulse" />

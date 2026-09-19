@@ -1,10 +1,10 @@
 /**
  * Client-side (localStorage) persistence for the pre-signup onboarding
- * questionnaire (tutor, language, level, motivation, daily goal, AI consent).
+ * questionnaire (tutor, language, level, motivation, and daily goal).
  *
  * Ported from fina's onboarding AsyncStorage keys (`chosenTutor`,
- * `onboardingData`, `aiConsentGiven` — see `lib/AuthContext.tsx` and
- * `app/assessment.tsx`) — consolidated into a single JSON blob under
+ * `onboardingData` — see `lib/AuthContext.tsx` and `app/assessment.tsx`) —
+ * consolidated into a single JSON blob under
  * `ONBOARDING_KEY` since the web flow has no per-key AsyncStorage history to
  * stay compatible with, and the whole flow runs before sign-up.
  *
@@ -19,7 +19,6 @@ export interface OnboardingData {
   level: string;
   motivation: string;
   goal: number;
-  consent: boolean;
 }
 
 export const ONBOARDING_KEY = "fina_onboarding";
@@ -70,7 +69,7 @@ export function clearOnboarding(): void {
   }
 }
 
-/** True once every field `POST /api/profile/onboarding` requires is present and valid. */
+/** True once every onboarding answer required by `POST /api/profile/onboarding` is valid. */
 export function isCompleteOnboarding(d: Partial<OnboardingData>): d is OnboardingData {
   return (
     isTutorId(d.tutor) &&
@@ -79,8 +78,7 @@ export function isCompleteOnboarding(d: Partial<OnboardingData>): d is Onboardin
     d.level.length > 0 &&
     typeof d.motivation === "string" &&
     d.motivation.length > 0 &&
-    typeof d.goal === "number" &&
-    d.consent === true
+    typeof d.goal === "number"
   );
 }
 

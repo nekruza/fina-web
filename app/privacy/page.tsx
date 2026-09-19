@@ -69,9 +69,8 @@ export default function PrivacyPage() {
 
       <LegalSection title="Third-Party AI Services & Data Sharing">
         <p>
-          Fina uses third-party AI services to deliver its core vocabulary learning features. We obtain your explicit
-          consent before sharing any personal data with these services. This section identifies what data is sent, who
-          receives it, and how it is used.
+          Fina uses third-party AI services to deliver its core vocabulary learning features. This section identifies
+          what data is sent, who receives it, and how it is used.
         </p>
 
         <aside aria-label="Required disclosure" className="rounded-[20px] border border-hot/30 bg-hot/5 p-5">
@@ -79,8 +78,8 @@ export default function PrivacyPage() {
             Required Disclosure (App Store Guidelines 5.1.1(i) and 5.1.2(i))
           </p>
           <p className="mt-2 text-[15px]">
-            Before you can use Fina&apos;s AI-powered features, you must accept our AI Data Sharing Consent screen. This
-            ensures you understand what data is shared with third-party AI providers and consent to this sharing.
+            Review this information before using Fina&apos;s AI-powered features so you understand what data is shared
+            with third-party AI providers and how it is used.
           </p>
         </aside>
 
@@ -137,11 +136,6 @@ export default function PrivacyPage() {
         <p>
           You can opt out of AI-powered features at any time by contacting us or deleting your account. Each AI provider
           operates under its own privacy policy. We encourage you to review them.
-        </p>
-        <p>
-          <strong className="font-semibold text-ink">Consent Process:</strong> Before using any AI-powered features, you
-          must accept our AI Data Sharing Consent screen during onboarding. This consent is recorded and applies to all
-          future use of AI features. You will not be prompted again on subsequent app launches.
         </p>
         <p>
           <strong className="font-semibold text-ink">Data Protection Guarantee:</strong> All third-party AI providers

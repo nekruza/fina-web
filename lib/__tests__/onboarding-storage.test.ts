@@ -17,7 +17,6 @@ const COMPLETE: OnboardingData = {
   level: "some",
   motivation: "travel",
   goal: 10,
-  consent: true,
 };
 
 describe("onboarding-storage", () => {
@@ -81,12 +80,12 @@ describe("onboarding-storage", () => {
       expect(isCompleteOnboarding({})).toBe(false);
     });
 
-    it("is true once every field is present and valid", () => {
+    it("is true once every questionnaire answer is present and valid", () => {
       expect(isCompleteOnboarding(COMPLETE)).toBe(true);
     });
 
-    it("is false when consent is not exactly true", () => {
-      expect(isCompleteOnboarding({ ...COMPLETE, consent: false })).toBe(false);
+    it("does not require the removed AI consent field", () => {
+      expect(isCompleteOnboarding(COMPLETE)).toBe(true);
     });
 
     it("is false for an unknown tutor id", () => {

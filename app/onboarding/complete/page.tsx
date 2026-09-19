@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { loadOnboarding, clearOnboarding, isCompleteOnboarding } from "@/lib/onboarding-storage";
+import { saveUserPreferences } from "@/lib/user-preferences";
 
 /**
  * Runs after sign-up (or for an already-signed-in user finishing setup):
@@ -42,6 +43,7 @@ export default function OnboardingCompletePage() {
       });
 
       if (res.ok) {
+        saveUserPreferences(user.id, { tutorId: onboarding.tutor, dailyGoalMinutes: onboarding.goal });
         clearOnboarding();
         router.replace("/app");
       } else {

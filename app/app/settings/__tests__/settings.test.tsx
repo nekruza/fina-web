@@ -77,6 +77,7 @@ function setup(overrides: Partial<ProfileSummary> = {}, searchParams = "") {
 beforeEach(() => {
   jest.clearAllMocks();
   global.fetch = jest.fn();
+  window.localStorage.clear();
 });
 
 describe("rendering", () => {
@@ -86,8 +87,19 @@ describe("rendering", () => {
 
     expect(document.getElementById("profile")).toBeInTheDocument();
     expect(document.getElementById("learning")).toBeInTheDocument();
+    expect(document.getElementById("ai-privacy")).toBeInTheDocument();
     expect(document.getElementById("subscription")).toBeInTheDocument();
     expect(document.getElementById("account")).toBeInTheDocument();
+  });
+
+  it("shows the complete AI provider disclosure in Settings", () => {
+    setup();
+    render(<SettingsPage />);
+
+    expect(screen.getByRole("heading", { name: "AI & privacy" })).toBeInTheDocument();
+    expect(screen.getByText("Google Gemini")).toBeInTheDocument();
+    expect(screen.getByText("Inworld AI")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "View Privacy Policy" })).toHaveAttribute("href", "/privacy");
   });
 
   it("shows a loading state while the profile is loading", () => {
@@ -138,7 +150,7 @@ describe("rendering", () => {
 });
 
 describe("saving profile and learning fields", () => {
-  it("PATCHes the combined profile+learning fields and shows a success toast", async () => {
+  it("PATCHes table-backed fields and stores local preferences separately", async () => {
     setup({ displayName: "Jane" });
     render(<SettingsPage />);
 
@@ -150,11 +162,13 @@ describe("saving profile and learning fields", () => {
         displayName: "Jane Austen",
         level: "beginner",
         targetLanguage: "spanish",
-        nativeLanguage: "english",
-        dailyGoalMinutes: 10,
-        tutorId: "luna",
       })
     );
+    expect(JSON.parse(window.localStorage.getItem("fina_user_preferences:user-1")!)).toMatchObject({
+      nativeLanguage: "english",
+      tutorId: "luna",
+      dailyGoalMinutes: 10,
+    });
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Settings saved"));
   });
 

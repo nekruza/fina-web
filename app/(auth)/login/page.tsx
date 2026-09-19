@@ -25,6 +25,9 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const nextParam = searchParams.get("next");
   const next = safeNext(nextParam);
+  const displayedError = error ?? (searchParams.get("error") === "auth_callback_failed"
+    ? "Sign-in could not be completed. Please start again using Google or your email below."
+    : null);
   const supabase = createClient();
 
   async function handleGoogleSignIn() {
@@ -115,9 +118,9 @@ function LoginForm() {
           />
         </div>
 
-        {error && (
+        {displayedError && (
           <div role="alert" className="rounded-xl px-4 py-3 text-sm border border-hot/25 bg-hot/10 text-hot">
-            {error}
+            {displayedError}
           </div>
         )}
 

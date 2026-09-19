@@ -22,16 +22,18 @@ export interface ProfileRow {
   weekly_activity: string | null;
   target_language: string | null;
   learning_motivation: string | null;
-  daily_goal_minutes: number | null;
+  daily_goal_minutes?: number | null;
+  ai_consent_accepted?: boolean | null;
   study_plan_completed_days: string | null;
   study_plan_start_date: string | null;
-  native_language: string | null;
-  tutor_id: string | null;
-  ai_consent_at: string | null;
-  stripe_customer_id: string | null;
-  stripe_subscription_id: string | null;
-  pro_status: string | null;
-  pro_current_period_end: string | null;
+  /** Legacy web fields retained for compatibility with older fixtures only. */
+  native_language?: string | null;
+  tutor_id?: string | null;
+  ai_consent_at?: string | null;
+  stripe_customer_id?: string | null;
+  stripe_subscription_id?: string | null;
+  pro_status?: string | null;
+  pro_current_period_end?: string | null;
   created_at: string;
   updated_at: string | null;
 }
@@ -67,12 +69,9 @@ export type ProfileUpdate = Partial<
     | "display_name"
     | "user_level"
     | "target_language"
-    | "native_language"
-    | "daily_goal_minutes"
-    | "tutor_id"
     | "learning_motivation"
     | "study_plan_completed_days"
     | "study_plan_start_date"
-    | "ai_consent_at"
+    | "ai_consent_accepted"
   >
 >;

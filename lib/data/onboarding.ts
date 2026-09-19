@@ -4,9 +4,7 @@
  * Ported from fina:
  * - LEVEL_OPTIONS / LEVEL_LABEL: components/onboarding/OnboardingShared.tsx (LEVELS/LEVEL_LABEL)
  * - MOTIVATIONS / MOTIV_LEAD_IN / GOALS: components/onboarding/OnboardingShared.tsx
- * - DESTINATION_BY_MOTIVATION: app/plan-reveal.tsx
- * - PLAN_PHASES: app/plan-generating.tsx
- * - AI_SERVICES: app/ai-consent.tsx
+ * - AI_SERVICES: components/settings/AiPrivacySection.tsx
  */
 
 /** Self-reported level question — id maps to a UserLevel via onboardingLevelToUserLevel(). */
@@ -47,24 +45,7 @@ export const GOALS = [
   { min: 30, label: '30 min', sub: 'Intensive', emoji: '🚀' },
 ];
 
-/** Plan-reveal destination copy, keyed by MOTIVATIONS id. */
-export const DESTINATION_BY_MOTIVATION: Record<string, (lang: string) => string> = {
-  travel: (lang) => `you'll order dinner\nin ${lang}.`,
-  work: (lang) => `you'll run a meeting\nin ${lang}.`,
-  connect: (lang) => `you'll have your first\nreal chat in ${lang}.`,
-  media: () => `you'll watch a show\nwithout subtitles.`,
-  challenge: (lang) => `you'll think in ${lang}\nfor a full day.`,
-};
-
-/** Plan-generating screen's sequential phase labels ("Briefing {tutorName}" is a function). */
-export const PLAN_PHASES: (string | ((name: string) => string))[] = [
-  'Analyzing your answers',
-  'Picking lessons for your level',
-  (name: string) => `Briefing ${name}`,
-  'Building your 30-day plan',
-];
-
-/** AI-consent screen's third-party service disclosures. */
+/** Third-party service disclosures reused by Settings and privacy surfaces. */
 export const AI_SERVICES = [
   {
     name: 'Google Gemini',

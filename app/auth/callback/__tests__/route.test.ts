@@ -25,6 +25,40 @@ beforeEach(() => {
 });
 
 describe("GET /auth/callback", () => {
+  it("preserves the onboarding destination and cookie cleanup when exchange fails", async () => {
+    const { createServerClient } = jest.requireMock("@supabase/ssr");
+    const log = jest.spyOn(console, "error").mockImplementation(() => {});
+    exchangeCodeForSession.mockImplementationOnce(async () => {
+      const options = createServerClient.mock.calls.at(-1)[2];
+      options.cookies.setAll([{ name: "test-verifier", value: "", options: { maxAge: 0, path: "/" } }]);
+      return { data: { user: null }, error: { name: "AuthApiError", code: "bad_jwt", status: 401 } };
+    });
+    try {
+      const res = await GET(request("/auth/callback", { code: "private-code", next: "/onboarding/complete" }));
+      const destination = new URL(res.headers.get("location")!);
+      expect(destination.pathname).toBe("/login");
+      expect(destination.searchParams.get("next")).toBe("/onboarding/complete");
+      expect(res.cookies.get("test-verifier")?.value).toBe("");
+      expect(log).toHaveBeenCalledWith(expect.stringContaining('"status":401'));
+      expect(JSON.stringify(log.mock.calls)).not.toContain("private-code");
+    } finally {
+      log.mockRestore();
+    }
+  });
+
+  it("handles a network exception without losing the destination", async () => {
+    const log = jest.spyOn(console, "error").mockImplementation(() => {});
+    exchangeCodeForSession.mockRejectedValueOnce(new Error("Network unavailable"));
+    try {
+      const res = await GET(request("/auth/callback", { code: "abc", next: "/onboarding/complete" }));
+      const destination = new URL(res.headers.get("location")!);
+      expect(destination.pathname).toBe("/login");
+      expect(destination.searchParams.get("next")).toBe("/onboarding/complete");
+    } finally {
+      log.mockRestore();
+    }
+  });
+
   it("redirects to /login with an error when there is no code", async () => {
     const res = await GET(request("/auth/callback"));
 

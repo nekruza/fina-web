@@ -38,8 +38,9 @@ export default function StudyPlanPage() {
   const weeks = weeksOf(STUDY_PLAN_30);
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <h1 className="font-display text-3xl text-ink">Your 30-Day Plan</h1>
+    <div className="mx-auto max-w-[1080px]">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent-brand">A steady rhythm</p>
+      <h1 className="mt-2 font-display text-3xl leading-tight text-ink sm:text-4xl">Your 30-Day Plan</h1>
       {currentDay !== null ? (
         <p className="mt-1 text-sm text-sub">Day {currentDay} of 30</p>
       ) : (
@@ -53,7 +54,7 @@ export default function StudyPlanPage() {
         })}
       </div>
 
-      <div className="mt-8 flex flex-col gap-8">
+      <div className="mt-8 grid gap-8 xl:grid-cols-2">
         {weeks.map((week, weekIdx) => (
           <section key={weekIdx} aria-labelledby={`week-${weekIdx + 1}-heading`}>
             <h2 id={`week-${weekIdx + 1}-heading`} className="text-[11px] font-semibold uppercase tracking-[0.16em] text-sub">

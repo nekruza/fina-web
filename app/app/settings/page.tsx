@@ -10,8 +10,10 @@ import { useProfile, useUpdateProfile } from "@/lib/queries/profile";
 import { LANGUAGES, type LanguageId } from "@/lib/languages";
 import { USER_LEVELS, type UserLevel } from "@/lib/levels";
 import { TutorPicker } from "@/components/roleplay/TutorPicker";
+import { AiPrivacySection } from "@/components/settings/AiPrivacySection";
 import type { TutorId } from "@/lib/tutors";
 import { isBillingPlan, type BillingPlan } from "@/lib/billing";
+import { saveUserPreferences } from "@/lib/user-preferences";
 import { ProUpgradeDialog } from "@/components/ProUpgradeDialog";
 import {
   Dialog,
@@ -50,6 +52,7 @@ function SelectField({
       <div className="relative mt-2">
         <select
           id={id}
+          name={id}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           className="w-full appearance-none rounded-xl border border-line bg-surface px-4 py-3 pr-10 text-sm text-ink transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"
@@ -174,17 +177,15 @@ export default function SettingsPage() {
   const displayNameValid = displayName.trim().length > 0 && displayName.trim().length <= 100;
 
   async function handleSave() {
-    if (!displayNameValid || saving) return;
+    if (!displayNameValid || saving || !profile) return;
     setSaving(true);
     try {
       await updateProfile.mutateAsync({
         displayName: displayName.trim(),
         level,
         targetLanguage,
-        nativeLanguage,
-        dailyGoalMinutes,
-        tutorId,
       });
+      saveUserPreferences(profile.id, { nativeLanguage, tutorId, dailyGoalMinutes });
       toast.success("Settings saved");
     } catch (err) {
       toast.error(err instanceof Error && err.message ? err.message : "Failed to save settings");
@@ -246,11 +247,38 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl pb-16">
-      <h1 className="font-display text-3xl text-ink">Settings</h1>
-      <p className="mt-1.5 text-base text-sub">Your profile, learning preferences, and account.</p>
+    <div className="mx-auto max-w-[1100px] pb-16">
+      <header>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent-brand">Your account</p>
+        <h1 className="mt-2 font-display text-3xl leading-tight text-ink sm:text-4xl">Settings</h1>
+        <p className="mt-2 max-w-[55ch] text-base text-sub">Your profile, learning preferences, and account.</p>
+      </header>
 
-      <div className="mt-6 flex flex-col gap-6">
+      <div className="mt-8 grid gap-8 lg:grid-cols-[180px_minmax(0,1fr)]">
+        <aside className="hidden lg:block">
+          <nav className="sticky top-8" aria-label="Settings sections">
+            <p className="px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-sub">Settings</p>
+            <div className="mt-3 flex flex-col gap-1">
+              {[
+                ["#profile", "Profile"],
+                ["#learning", "Learning"],
+                ["#ai-privacy", "AI & privacy"],
+                ["#subscription", "Subscription"],
+                ["#account", "Account"],
+              ].map(([href, label]) => (
+                <a
+                  key={href}
+                  href={href}
+                  className="rounded-xl px-3 py-2 text-sm font-medium text-sub transition-[background-color,color] hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"
+                >
+                  {label}
+                </a>
+              ))}
+            </div>
+          </nav>
+        </aside>
+
+        <div className="flex min-w-0 flex-col gap-6">
         <section id="profile" className="scroll-mt-24 rounded-2xl border border-line bg-surface p-6 sm:p-8">
           <h2 className="font-display text-xl text-ink">Profile</h2>
           <div className="mt-5 space-y-4">
@@ -260,10 +288,12 @@ export default function SettingsPage() {
               </label>
               <input
                 id="settings-name"
+                name="displayName"
                 type="text"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 maxLength={100}
+                autoComplete="name"
                 aria-invalid={!displayNameValid}
                 className="mt-2 w-full rounded-xl border border-line bg-surface px-4 py-3 text-sm text-ink placeholder:text-sub focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"
               />
@@ -279,9 +309,11 @@ export default function SettingsPage() {
               </label>
               <input
                 id="settings-email"
+                name="email"
                 type="email"
                 value={profile.email}
                 readOnly
+                autoComplete="email"
                 className="mt-2 w-full cursor-not-allowed rounded-xl border border-line bg-cream px-4 py-3 text-sm text-sub"
               />
             </div>
@@ -352,6 +384,8 @@ export default function SettingsPage() {
           </button>
         </section>
 
+        <AiPrivacySection />
+
         <section id="subscription" className="scroll-mt-24 rounded-2xl border border-line bg-surface p-6 sm:p-8">
           <h2 className="font-display text-xl text-ink">Subscription</h2>
           <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -420,6 +454,7 @@ export default function SettingsPage() {
             </Link>
           </p>
         </section>
+        </div>
       </div>
 
       <ProUpgradeDialog
@@ -440,7 +475,7 @@ export default function SettingsPage() {
           <DialogHeader>
             <DialogTitle className="font-display text-xl font-normal text-ink">Delete your account?</DialogTitle>
             <DialogDescription className="text-sm text-sub">
-              This permanently deletes your account and everything in it — conversations, vocabulary, and progress.
+              This permanently deletes your account and everything in it, including conversations, vocabulary, and progress.
               This cannot be undone. Type {DELETE_CONFIRM_WORD} to confirm.
             </DialogDescription>
           </DialogHeader>

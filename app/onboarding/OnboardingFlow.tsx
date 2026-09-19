@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { track } from "@/lib/mixpanel";
 import { ONBOARDING_LANGUAGE_IDS, LANGUAGE_GREETING, LEVEL_SAMPLES, getLanguage, isLanguageId } from "@/lib/languages";
@@ -14,31 +13,16 @@ import {
   MOTIVATIONS,
   MOTIV_LEAD_IN,
   GOALS,
-  DESTINATION_BY_MOTIVATION,
-  PLAN_PHASES,
-  AI_SERVICES,
 } from "@/lib/data/onboarding";
-import { STUDY_PLAN_30 } from "@/lib/data/studyPlan";
 import { loadOnboarding, saveOnboarding, type OnboardingData } from "@/lib/onboarding-storage";
 import { StepShell } from "@/components/onboarding/StepShell";
 import { ChatBubble } from "@/components/onboarding/ChatBubble";
 import { OptionRow } from "@/components/onboarding/OptionRow";
 
-type Step = "tutor" | "language" | "level" | "motivation" | "goal" | "generating" | "reveal" | "consent";
+type Step = "tutor" | "language" | "level" | "motivation" | "goal" | "complete";
 
 const CHAT_STEP_ORDER: Step[] = ["language", "level", "motivation", "goal"];
-const STEP_ORDER: Step[] = ["tutor", ...CHAT_STEP_ORDER, "generating", "reveal", "consent"];
-
-const PREVIEW_DAYS = STUDY_PLAN_30.slice(0, 7);
-
-function prefersReducedMotion(): boolean {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
-  try {
-    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  } catch {
-    return false;
-  }
-}
+const STEP_ORDER: Step[] = ["tutor", ...CHAT_STEP_ORDER];
 
 /** Determines where a returning visitor resumes: the first field not yet saved. */
 function resumeStep(data: Partial<OnboardingData>): Step {
@@ -47,7 +31,7 @@ function resumeStep(data: Partial<OnboardingData>): Step {
   if (!data.level) return "level";
   if (!data.motivation) return "motivation";
   if (typeof data.goal !== "number") return "goal";
-  return "consent";
+  return "complete";
 }
 
 export function OnboardingFlow() {
@@ -70,7 +54,6 @@ export function OnboardingFlow() {
   const [level, setLevel] = useState<string | null>(null);
   const [motivation, setMotivation] = useState<string | null>(null);
   const [goal, setGoal] = useState<number | null>(null);
-  const [consented, setConsented] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
   const [signedInChecked, setSignedInChecked] = useState(false);
 
@@ -166,33 +149,21 @@ export function OnboardingFlow() {
     else if (step === "motivation" && motivation) setStep("goal");
     else if (step === "goal" && goal) {
       track("onboarding_assessment_completed", { language, level, motivation, daily_goal_minutes: goal });
-      setStep("generating");
+      if (!signedInChecked) return;
+      if (signedIn) {
+        router.push("/onboarding/complete");
+      } else {
+        router.push("/signup?next=/onboarding/complete");
+      }
     }
   }
 
-  function advanceFromGenerating() {
-    setStep("reveal");
-  }
-
-  // ── Plan reveal ─────────────────────────────────────────────────
+  // ── Final plan navigation ────────────────────────────────────
+  // The auth check gates both the button's label ("Create my account" vs.
+  // "Finish setup") and where it routes, so a signed-in user is never sent
+  // to /signup because we guessed too early.
   useEffect(() => {
     if (!hydrated) return;
-    if (step === "reveal") trackOnce("reveal", "onboarding_plan_reveal_viewed");
-  }, [step, hydrated]);
-
-  function continueFromReveal() {
-    track("onboarding_plan_reveal_continue");
-    setStep("consent");
-  }
-
-  // ── AI consent ────────────────────────────────────────────────
-  // The signed-in check gates both the button's label ("Create my
-  // account" vs. "Finish setup") and where Continue routes to, so the
-  // button stays disabled (see ConsentStep) until it resolves — a signed-in
-  // user must never be misrouted to /signup because we guessed too early.
-  useEffect(() => {
-    if (!hydrated || step !== "consent") return;
-    trackOnce("consent", "onboarding_ai_consent_viewed");
     let cancelled = false;
     const supabase = createClient();
     supabase.auth
@@ -203,7 +174,7 @@ export function OnboardingFlow() {
         setSignedInChecked(true);
       })
       .catch((error: unknown) => {
-        console.error("Failed to check auth status before consent submit:", error);
+        console.error("Failed to check auth status before onboarding submit:", error);
         if (cancelled) return;
         setSignedIn(false);
         setSignedInChecked(true);
@@ -211,17 +182,12 @@ export function OnboardingFlow() {
     return () => {
       cancelled = true;
     };
-  }, [step, hydrated]);
+  }, [hydrated]);
 
-  function submitConsent() {
-    track("onboarding_ai_consent_accepted");
-    saveOnboarding({ consent: true });
-    if (signedIn) {
-      router.push("/onboarding/complete");
-    } else {
-      router.push("/signup?next=/onboarding/complete");
-    }
-  }
+  useEffect(() => {
+    if (!hydrated || step !== "complete" || !signedInChecked) return;
+    router.replace(signedIn ? "/onboarding/complete" : "/signup?next=/onboarding/complete");
+  }, [hydrated, router, signedIn, signedInChecked, step]);
 
   const tutorObj = getTutorById(tutor);
 
@@ -241,12 +207,15 @@ export function OnboardingFlow() {
 
   if (CHAT_STEP_ORDER.includes(step)) {
     const stepIndex = CHAT_STEP_ORDER.indexOf(step) + 1;
-    const canContinue =
+    const hasSelection =
       (step === "language" && !!language) ||
       (step === "level" && !!level) ||
       (step === "motivation" && !!motivation) ||
       (step === "goal" && !!goal);
-    const continueLabel = step === "goal" ? "Build my plan" : "Continue";
+    const canContinue = hasSelection && (step !== "goal" || signedInChecked);
+    const continueLabel = step === "goal"
+      ? signedIn ? "Finish setup" : "Create my account"
+      : "Continue";
 
     return (
       <StepShell
@@ -274,34 +243,10 @@ export function OnboardingFlow() {
     );
   }
 
-  if (step === "generating") {
-    return <GeneratingStep headingRef={headingRef} tutorId={tutor} onBack={goBack} onAdvance={advanceFromGenerating} />;
-  }
-
-  if (step === "reveal") {
-    return (
-      <RevealStep
-        headingRef={headingRef}
-        tutorId={tutor}
-        language={language ?? "spanish"}
-        motivation={motivation ?? "travel"}
-        goal={goal ?? 10}
-        onBack={goBack}
-        onContinue={continueFromReveal}
-      />
-    );
-  }
-
   return (
-    <ConsentStep
-      headingRef={headingRef}
-      consented={consented}
-      onToggleConsent={() => setConsented((v) => !v)}
-      onBack={goBack}
-      onSubmit={submitConsent}
-      signedIn={signedIn}
-      signedInChecked={signedInChecked}
-    />
+    <div className="flex min-h-screen items-center justify-center bg-cream" role="status" aria-live="polite">
+      <span className="sr-only">Finishing setup…</span>
+    </div>
   );
 }
 
@@ -326,22 +271,6 @@ function PrimaryButton({
       className="w-full rounded-2xl bg-ink py-4 text-center text-lg font-semibold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-35"
     >
       {label}
-    </button>
-  );
-}
-
-/* ───────── Back button (used outside StepShell) ───────── */
-function BackButton({ onClick }: { onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label="Go back"
-      className="flex h-[30px] w-[30px] items-center justify-center rounded-full border border-line bg-surface text-ink transition-colors hover:border-ink/40"
-    >
-      <span aria-hidden className="text-base leading-none">
-        ‹
-      </span>
     </button>
   );
 }
@@ -577,278 +506,6 @@ function GoalStep({
           );
         })}
       </div>
-    </div>
-  );
-}
-
-/* ───────── Step 6: Plan generating ───────── */
-function GeneratingStep({
-  headingRef,
-  tutorId,
-  onBack,
-  onAdvance,
-}: {
-  headingRef: HeadingRef;
-  tutorId: string;
-  onBack: () => void;
-  onAdvance: () => void;
-}) {
-  const tutor = getTutorById(tutorId);
-  const reducedMotion = prefersReducedMotion();
-  const [phase, setPhase] = useState(0);
-
-  useEffect(() => {
-    track("onboarding_plan_generating_viewed");
-    const tick = setInterval(() => {
-      setPhase((p) => Math.min(PLAN_PHASES.length, p + 1));
-    }, 650);
-    const advance = setTimeout(onAdvance, 2900);
-    return () => {
-      clearInterval(tick);
-      clearTimeout(advance);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  return (
-    <div className="flex min-h-screen flex-col bg-cream px-5 pb-8 pt-10 sm:pt-16">
-      <BackButton onClick={onBack} />
-
-      <div className="mt-8 flex flex-col items-center">
-        <div className="relative flex h-[150px] w-[150px] items-center justify-center">
-          {!reducedMotion && (
-            <span className="absolute h-[110px] w-[110px] animate-ping rounded-full border-[3px] border-accent-brand opacity-30" />
-          )}
-          <span className="relative block h-[110px] w-[110px] overflow-hidden rounded-full border-4 border-surface shadow-md">
-            <Image src={tutor.image} alt="" fill sizes="110px" className="object-cover" />
-          </span>
-        </div>
-
-        <h1
-          ref={headingRef as RefObject<HTMLHeadingElement | null>}
-          tabIndex={-1}
-          className="mt-8 mb-2 text-center font-display text-2xl font-bold text-ink outline-none"
-        >
-          Crafting your plan…
-        </h1>
-        <p className="mb-8 text-center text-sm text-sub">This&apos;ll take a few seconds.</p>
-
-        <div className="w-full max-w-[300px] space-y-3">
-          {PLAN_PHASES.map((label, i) => {
-            const text = typeof label === "function" ? label(tutor.name) : label;
-            const done = i < phase;
-            const active = i === phase;
-            return (
-              <div key={i} className={`flex items-center gap-3 ${done || active ? "opacity-100" : "opacity-35"}`}>
-                <span
-                  className={`flex h-[22px] w-[22px] flex-shrink-0 items-center justify-center rounded-full border-2 text-[11px] font-bold text-white ${
-                    done ? "border-accent-brand bg-accent-brand" : active ? "border-ink" : "border-line"
-                  }`}
-                >
-                  {done ? "✓" : null}
-                </span>
-                <span className={`text-sm ${active ? "font-semibold" : ""} ${done ? "text-ink" : "text-sub"}`}>{text}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ───────── Step 7: Plan reveal ───────── */
-function RevealStep({
-  headingRef,
-  tutorId,
-  language,
-  motivation,
-  goal,
-  onBack,
-  onContinue,
-}: {
-  headingRef: HeadingRef;
-  tutorId: string;
-  language: string;
-  motivation: string;
-  goal: number;
-  onBack: () => void;
-  onContinue: () => void;
-}) {
-  const tutor = getTutorById(tutorId);
-  const lang = getLanguage(language);
-  const destination = (DESTINATION_BY_MOTIVATION[motivation] ?? DESTINATION_BY_MOTIVATION.travel)(lang.label);
-
-  return (
-    <div className="flex min-h-screen flex-col bg-cream px-5 pb-6 pt-10 sm:pt-16">
-      <div className="mb-4">
-        <BackButton onClick={onBack} />
-      </div>
-
-      <div className="flex-1 overflow-y-auto">
-        <span className="mb-4 inline-block rounded bg-accent-brand px-2.5 py-1.5 text-[11px] font-bold tracking-wider text-white">
-          YOUR PLAN IS READY
-        </span>
-
-        <h1
-          ref={headingRef as RefObject<HTMLHeadingElement | null>}
-          tabIndex={-1}
-          className="mb-2 whitespace-pre-line font-display text-[26px] font-bold leading-tight text-ink outline-none"
-        >
-          {`In 30 days,\n${destination}`}
-        </h1>
-
-        <p className="mb-5 text-sm text-sub">
-          {goal} min/day · {lang.label} · with {tutor.name}
-        </p>
-
-        <div className="mb-3 flex items-center justify-between">
-          <p className="text-xs font-bold uppercase tracking-wide text-sub">Your 30-day plan</p>
-          <p className="text-xs text-sub">Week 1 preview</p>
-        </div>
-
-        <div className="mb-3 overflow-hidden rounded-[20px] border border-line bg-surface">
-          {PREVIEW_DAYS.map((d, i) => (
-            <div
-              key={d.day}
-              className={`flex items-center gap-3 px-4 py-3.5 ${i < PREVIEW_DAYS.length - 1 ? "border-b border-line" : ""}`}
-            >
-              <span
-                className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                  i === 0 ? "bg-ink text-white" : "bg-cream text-sub"
-                }`}
-              >
-                {d.day}
-              </span>
-              <span className="flex-1">
-                <span className="mb-0.5 block text-sm font-semibold text-ink">{d.speakLabel}</span>
-                <span className="flex gap-2">
-                  <span className="rounded-md bg-accent-soft px-2 py-0.5 text-[11px] font-semibold text-accent-brand">
-                    🎙️ Speak
-                  </span>
-                  <span className="rounded-md bg-orange-50 px-2 py-0.5 text-[11px] font-semibold text-orange-800">
-                    📖 {d.vocabTopic}
-                  </span>
-                </span>
-              </span>
-            </div>
-          ))}
-        </div>
-
-        <div className="mb-4 flex items-start gap-2.5 rounded-2xl bg-accent-soft p-3.5">
-          <span className="relative block h-8 w-8 flex-shrink-0 overflow-hidden rounded-full">
-            <Image src={tutor.image} alt="" fill sizes="32px" className="object-cover" />
-          </span>
-          <p className="flex-1 text-[13px] leading-snug text-ink">
-            <span className="font-bold">{tutor.name}:</span> &ldquo;Each day we&apos;ll practice speaking about a topic,
-            then learn the words to back it up. {goal} minutes is all it takes.&rdquo;
-          </p>
-        </div>
-      </div>
-
-      <div className="pt-2">
-        <PrimaryButton label="Continue" onClick={onContinue} />
-      </div>
-    </div>
-  );
-}
-
-/* ───────── Step 8: AI consent ───────── */
-function ConsentStep({
-  headingRef,
-  consented,
-  onToggleConsent,
-  onBack,
-  onSubmit,
-  signedIn,
-  signedInChecked,
-}: {
-  headingRef: HeadingRef;
-  consented: boolean;
-  onToggleConsent: () => void;
-  onBack: () => void;
-  onSubmit: () => void;
-  signedIn: boolean;
-  signedInChecked: boolean;
-}) {
-  const submitLabel = signedIn ? "Finish setup" : "Create my account";
-  const consentLabelId = "onboarding-consent-label";
-
-  return (
-    <div className="flex min-h-screen flex-col bg-cream px-6 pb-8 pt-10 sm:pt-16">
-      <div className="mb-6">
-        <BackButton onClick={onBack} />
-      </div>
-
-      <div className="mb-8 flex flex-col items-center text-center">
-        <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-accent-soft text-2xl">🔒</span>
-        <h1
-          ref={headingRef as RefObject<HTMLHeadingElement | null>}
-          tabIndex={-1}
-          className="mb-3 font-display text-3xl font-bold text-ink outline-none"
-        >
-          AI-Powered Features
-        </h1>
-        <p className="max-w-sm text-base leading-6 text-sub">
-          Fina uses third-party AI services to power your learning experience. Here&apos;s exactly what&apos;s shared
-          and with whom.
-        </p>
-      </div>
-
-      <div className="mb-6 space-y-3">
-        {AI_SERVICES.map((service) => (
-          <div key={service.name} className="rounded-2xl border border-line bg-surface p-4">
-            <p className="mb-1 text-base font-bold text-ink">{service.name}</p>
-            <p className="mb-3 text-xs text-sub">{service.operator}</p>
-            <div className="space-y-1.5">
-              <div className="flex gap-2">
-                <span className="w-20 flex-shrink-0 text-xs font-semibold text-sub">Data sent:</span>
-                <span className="flex-1 text-xs text-ink">{service.dataSent}</span>
-              </div>
-              <div className="flex gap-2">
-                <span className="w-20 flex-shrink-0 text-xs font-semibold text-sub">Purpose:</span>
-                <span className="flex-1 text-xs text-ink">{service.purpose}</span>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="mb-8 rounded-2xl bg-accent-soft p-4 text-center">
-        <p className="mb-2 text-sm leading-5 text-ink">
-          Your data is used solely to provide these features. It is not sold or used for advertising.
-        </p>
-        <Link href="/privacy" className="text-sm font-semibold text-accent-brand underline">
-          View Privacy Policy
-        </Link>
-      </div>
-
-      <button
-        type="button"
-        onClick={onToggleConsent}
-        role="checkbox"
-        aria-checked={consented}
-        aria-labelledby={consentLabelId}
-        className="mb-8 flex items-start gap-3 px-2 text-left"
-      >
-        <span
-          className={`mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md border-2 ${
-            consented ? "border-ink bg-ink" : "border-line bg-surface"
-          }`}
-        >
-          {consented && <span className="text-sm font-bold text-white">✓</span>}
-        </span>
-        <span id={consentLabelId} className="flex-1 text-sm leading-5 text-sub">
-          I understand and consent to my conversation data and voice audio being processed by the AI services listed
-          above.
-        </span>
-      </button>
-
-      <PrimaryButton label={submitLabel} onClick={onSubmit} disabled={!consented || !signedInChecked} />
-
-      {!consented && (
-        <p className="mt-4 text-center text-xs text-sub">Please accept the above to continue</p>
-      )}
     </div>
   );
 }

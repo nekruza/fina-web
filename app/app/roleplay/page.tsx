@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
-import { useProfile, useUpdateProfile } from "@/lib/queries/profile";
+import { useProfile } from "@/lib/queries/profile";
 import { useCustomRoleplays, useDeleteCustomRoleplay } from "@/lib/queries/roleplays";
 import { roleplays } from "@/lib/data/roleplays";
 import { customToScenario, filterScenarios, type RoleplayFilter } from "@/lib/roleplay-filter";
@@ -21,9 +21,10 @@ import {
 } from "@/components/ui/dialog";
 import { DEFAULT_TUTOR_ID, isTutorId, type TutorId } from "@/lib/tutors";
 import type { RoleplayScenario } from "@/lib/types/roleplay";
+import { saveUserPreferences } from "@/lib/user-preferences";
 
 const FILTERS: { id: RoleplayFilter; label: string }[] = [
-  { id: "all", label: "ALL" },
+  { id: "all", label: "All" },
   { id: "custom", label: "Custom" },
   { id: "life", label: "Life" },
   { id: "food", label: "Food" },
@@ -41,7 +42,6 @@ export default function RoleplayPage() {
   const [filter, setFilter] = useState<RoleplayFilter>(isRoleplayFilter(filterParam) ? filterParam : "all");
 
   const profileQuery = useProfile();
-  const updateProfile = useUpdateProfile();
   // `optimisticTutorId` overrides the profile's tutor while a change is in flight (or once it
   // has landed, until the next profile refetch). Deriving `tutorId` this way — rather than
   // syncing profile.tutorId into local state via an effect — keeps a single source of truth and
@@ -74,7 +74,11 @@ export default function RoleplayPage() {
   function handleTutorChange(id: TutorId) {
     const previous = optimisticTutorId;
     setOptimisticTutorId(id);
-    updateProfile.mutate({ tutorId: id }, { onError: () => setOptimisticTutorId(previous) });
+    if (profileQuery.data?.id) {
+      saveUserPreferences(profileQuery.data.id, { tutorId: id });
+    } else {
+      setOptimisticTutorId(previous);
+    }
   }
 
   function confirmDelete() {
@@ -92,24 +96,33 @@ export default function RoleplayPage() {
 
   return (
     <div className="mx-auto max-w-6xl">
-      <h1 className="font-display text-3xl text-ink">Roleplay</h1>
+      <header className="flex flex-col gap-5 border-b border-line pb-7 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent-brand">Practise in context</p>
+          <h1 className="mt-2 font-display text-3xl leading-tight text-ink sm:text-4xl">Roleplay</h1>
+          <p className="mt-2 max-w-[55ch] text-sm leading-relaxed text-sub">Pick a situation, then build confidence by speaking it through.</p>
+        </div>
 
-      <section className="mt-6">
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-sub">Choose your tutor</h2>
-        <div className="mt-3">
+        <Link
+          href="/app/roleplay/new"
+          className="inline-flex min-h-11 items-center justify-center gap-2 self-start rounded-xl bg-ink px-5 text-sm font-semibold text-cream transition-[background-color,transform] hover:bg-ink/90 active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand md:self-auto"
+        >
+          <Plus className="h-4 w-4" aria-hidden />
+          Create custom roleplay
+        </Link>
+      </header>
+
+      <section className="mt-8 rounded-[1.75rem] border border-line bg-surface p-5 sm:p-7" aria-labelledby="tutor-heading">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="max-w-xs">
+            <h2 id="tutor-heading" className="font-display text-xl text-ink">Choose your tutor</h2>
+            <p className="mt-1.5 text-sm leading-relaxed text-sub">Your tutor stays with you across every scenario.</p>
+          </div>
           <TutorPicker value={tutorId} onChange={handleTutorChange} />
         </div>
       </section>
 
-      <Link
-        href="/app/roleplay/new"
-        className="mt-6 inline-flex items-center gap-2 rounded-full bg-ink px-6 py-3 text-[15px] font-semibold text-cream transition hover:bg-ink/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"
-      >
-        <Plus className="h-4 w-4" aria-hidden />
-        Create custom roleplay
-      </Link>
-
-      <div className="mt-6 flex flex-wrap gap-2">
+      <div className="mt-8 flex flex-wrap gap-2" role="group" aria-label="Filter roleplays">
         {FILTERS.map(({ id, label }) => {
           const active = filter === id;
           return (
@@ -140,7 +153,7 @@ export default function RoleplayPage() {
       )}
 
       {scenarios.length > 0 ? (
-        <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
+        <div className="mt-5 grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
           {scenarios.map((scenario) => {
             const isCustom = customIds.has(scenario.id);
             const href = isCustom

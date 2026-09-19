@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Sparkles, Mic, BookOpen, MessageSquare } from "lucide-react";
+import { ArrowRight, BookOpen, CalendarDays, MessageSquare, Mic, Sparkles, TrendingUp } from "lucide-react";
 import { useProfile, useUpdateProfile } from "@/lib/queries/profile";
 import { LanguageLevelSwitcher } from "@/components/home/LanguageLevelSwitcher";
 import { StreakCard } from "@/components/home/StreakCard";
@@ -55,104 +55,140 @@ export function HomeClient() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <header className="flex items-start justify-between gap-4">
-        <div>
+    <div className="mx-auto max-w-[1180px]">
+      <header className="flex flex-col gap-5 border-b border-line pb-7 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent-brand">Your practice space</p>
           {greeting ? (
-            <h1 className="font-display text-3xl text-ink">
+            <h1 className="mt-2 font-display text-3xl leading-tight text-ink sm:text-4xl">
               {greeting}, {firstName}
             </h1>
           ) : (
-            <div className="h-9 w-56 rounded-lg bg-line motion-safe:animate-pulse" aria-hidden />
+            <div className="mt-2 h-10 w-64 rounded-lg bg-line motion-safe:animate-pulse" aria-hidden />
           )}
-
-          <div className="mt-2 min-h-[30px]">
-            {isLoading ? null : profile?.pro.isPro ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-ink px-3 py-1.5 text-xs font-semibold text-cream">
-                <Sparkles className="h-3 w-3" aria-hidden />
-                Pro
-              </span>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setUpgradeOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-full bg-accent-brand px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-accent-brand/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"
-              >
-                <Sparkles className="h-3 w-3" aria-hidden />
-                Upgrade to Pro
-              </button>
-            )}
-          </div>
+          <p className="mt-2 max-w-[52ch] text-sm leading-relaxed text-sub">
+            Keep your daily practice moving with a focused speaking session and a few useful words.
+          </p>
         </div>
 
-        <LanguageLevelSwitcher
-          language={language}
-          level={level}
-          onLanguageChange={handleLanguageChange}
-          onLevelChange={handleLevelChange}
-        />
-      </header>
-
-      <div className="mt-6">
-        <StreakCard
-          currentStreak={profile?.streak.current ?? 0}
-          weeklyActivity={profile?.streak.weeklyActivity ?? EMPTY_WEEK}
-          isLoading={isLoading}
-        />
-      </div>
-
-      {profile && (
-        <div className="mt-4">
-          <StudyPlanCard
-            userId={profile.id}
-            targetLanguage={language}
-            tutorId={tutorId}
-            studyPlanStartDate={profile.studyPlan.startDate}
-            completedDays={profile.studyPlan.completedDays}
+        <div className="flex flex-wrap items-center gap-3">
+          {!isLoading && (
+            <>
+              {profile?.pro.isPro ? (
+                <span className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-ink px-3 text-xs font-semibold text-cream">
+                  <Sparkles className="h-3 w-3" aria-hidden />
+                  Pro plan
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setUpgradeOpen(true)}
+                  className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-accent-brand px-3 text-xs font-semibold text-white transition-[background-color,transform] hover:bg-accent-brand/90 active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"
+                >
+                  <Sparkles className="h-3 w-3" aria-hidden />
+                  Upgrade to Pro
+                </button>
+              )}
+            </>
+          )}
+          <LanguageLevelSwitcher
+            language={language}
+            level={level}
+            onLanguageChange={handleLanguageChange}
+            onLevelChange={handleLevelChange}
           />
         </div>
-      )}
+      </header>
 
-      <div className="mt-8 grid gap-3 sm:grid-cols-3">
-        <Link
-          href="/app/roleplay"
-          className="flex flex-col gap-3 rounded-3xl border border-line bg-surface p-5 transition hover:border-sub/40 hover:shadow-[0_16px_32px_-24px_rgba(27,26,23,0.18)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"
-        >
-          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-accent-soft text-accent-brand">
-            <Mic className="h-5 w-5" aria-hidden />
-          </span>
-          <span>
-            <span className="block font-display text-lg text-ink">Voice chat</span>
-            <span className="block text-sm text-sub">Choose a roleplay and practise speaking</span>
-          </span>
-        </Link>
+      <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
+        <div className="min-w-0 space-y-6">
+          <StreakCard
+            currentStreak={profile?.streak.current ?? 0}
+            weeklyActivity={profile?.streak.weeklyActivity ?? EMPTY_WEEK}
+            isLoading={isLoading}
+          />
 
-        <Link
-          href="/app/vocabulary"
-          className="flex flex-col gap-3 rounded-3xl border border-line bg-surface p-5 transition hover:border-sub/40 hover:shadow-[0_16px_32px_-24px_rgba(27,26,23,0.18)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"
-        >
-          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-accent-soft text-accent-brand">
-            <BookOpen className="h-5 w-5" aria-hidden />
-          </span>
-          <span>
-            <span className="block font-display text-lg text-ink">Words</span>
-            <span className="block text-sm text-sub">Learn and manage your vocabulary</span>
-          </span>
-        </Link>
+          {profile && (
+            <StudyPlanCard
+              userId={profile.id}
+              targetLanguage={language}
+              tutorId={tutorId}
+              studyPlanStartDate={profile.studyPlan.startDate}
+              completedDays={profile.studyPlan.completedDays}
+            />
+          )}
+        </div>
 
-        <button
-          type="button"
-          onClick={() => feedbackDialog.open()}
-          className="flex flex-col gap-3 rounded-3xl border border-line bg-surface p-5 text-left transition hover:border-sub/40 hover:shadow-[0_16px_32px_-24px_rgba(27,26,23,0.18)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"
-        >
-          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-accent-soft text-accent-brand">
-            <MessageSquare className="h-5 w-5" aria-hidden />
-          </span>
-          <span>
-            <span className="block font-display text-lg text-ink">Give us feedback</span>
-            <span className="block text-sm text-sub">Help us improve Fina</span>
-          </span>
-        </button>
+        <aside className="min-w-0">
+          <section className="rounded-[1.75rem] border border-line bg-surface p-5 sm:p-6" aria-labelledby="quick-start-heading">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent-brand">Quick start</p>
+                <h2 id="quick-start-heading" className="mt-1 font-display text-xl text-ink">Choose your next step</h2>
+              </div>
+              <CalendarDays className="mt-1 h-5 w-5 text-sub" aria-hidden />
+            </div>
+
+            <div className="mt-5 divide-y divide-line">
+              <Link
+                href="/app/roleplay"
+                className="group flex items-center gap-3 py-3 first:pt-0 last:pb-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent-brand"
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent-brand">
+                  <Mic className="h-5 w-5" aria-hidden />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold text-ink">Start speaking</span>
+                  <span className="mt-0.5 block text-xs leading-relaxed text-sub">Choose a roleplay and practise aloud</span>
+                </span>
+                <ArrowRight className="h-4 w-4 shrink-0 text-sub transition-transform group-hover:translate-x-0.5" aria-hidden />
+              </Link>
+
+              <Link
+                href="/app/vocabulary"
+                className="group flex items-center gap-3 py-3 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent-brand"
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent-brand">
+                  <BookOpen className="h-5 w-5" aria-hidden />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold text-ink">Review words</span>
+                  <span className="mt-0.5 block text-xs leading-relaxed text-sub">Learn and manage your vocabulary</span>
+                </span>
+                <ArrowRight className="h-4 w-4 shrink-0 text-sub transition-transform group-hover:translate-x-0.5" aria-hidden />
+              </Link>
+
+              <Link
+                href="/app/progress"
+                className="group flex items-center gap-3 py-3 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent-brand"
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cream text-ink">
+                  <TrendingUp className="h-5 w-5" aria-hidden />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold text-ink">See your progress</span>
+                  <span className="mt-0.5 block text-xs leading-relaxed text-sub">Look back at recent practice</span>
+                </span>
+                <ArrowRight className="h-4 w-4 shrink-0 text-sub transition-transform group-hover:translate-x-0.5" aria-hidden />
+              </Link>
+
+              <button
+                type="button"
+                onClick={() => feedbackDialog.open()}
+                className="group hidden w-full items-center gap-3 py-3 text-left last:pb-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent-brand sm:flex"
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cream text-ink">
+                  <MessageSquare className="h-5 w-5" aria-hidden />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold text-ink">Share feedback</span>
+                  <span className="mt-0.5 block text-xs leading-relaxed text-sub">Help make Fina better</span>
+                </span>
+                <ArrowRight className="h-4 w-4 shrink-0 text-sub transition-transform group-hover:translate-x-0.5" aria-hidden />
+              </button>
+            </div>
+          </section>
+        </aside>
       </div>
 
       <ProUpgradeDialog open={upgradeOpen} onClose={() => setUpgradeOpen(false)} reason="upgrade" />

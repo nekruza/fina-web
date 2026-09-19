@@ -219,25 +219,25 @@ describe("PATCH /api/profile", () => {
     await expect(res.json()).resolves.toEqual({ error: "Invalid targetLanguage" });
   });
 
-  it("rejects an invalid nativeLanguage", async () => {
+  it("does not persist nativeLanguage because it is a local preference", async () => {
     mockSupabase({});
-    const res = await PATCH(patchRequest({ nativeLanguage: "klingon" }));
+    const res = await PATCH(patchRequest({ nativeLanguage: "english" }));
     expect(res.status).toBe(400);
-    await expect(res.json()).resolves.toEqual({ error: "Invalid nativeLanguage" });
+    await expect(res.json()).resolves.toEqual({ error: "Nothing to update" });
   });
 
-  it("rejects a dailyGoalMinutes outside {5,10,20,30}", async () => {
+  it("does not persist dailyGoalMinutes because it is a local preference", async () => {
     mockSupabase({});
     const res = await PATCH(patchRequest({ dailyGoalMinutes: 15 }));
     expect(res.status).toBe(400);
-    await expect(res.json()).resolves.toEqual({ error: "Invalid dailyGoalMinutes" });
+    await expect(res.json()).resolves.toEqual({ error: "Nothing to update" });
   });
 
-  it("rejects an invalid tutorId", async () => {
+  it("does not persist tutorId because it is a local preference", async () => {
     mockSupabase({});
-    const res = await PATCH(patchRequest({ tutorId: "bogus" }));
+    const res = await PATCH(patchRequest({ tutorId: "jake" }));
     expect(res.status).toBe(400);
-    await expect(res.json()).resolves.toEqual({ error: "Invalid tutorId" });
+    await expect(res.json()).resolves.toEqual({ error: "Nothing to update" });
   });
 
   it("stops at the first invalid field", async () => {
@@ -257,9 +257,6 @@ describe("PATCH /api/profile", () => {
     expect(writePayload(mock, "profiles", "update")).toEqual({
       user_level: "advanced",
       target_language: "japanese",
-      native_language: "english",
-      daily_goal_minutes: 30,
-      tutor_id: "jake",
     });
   });
 });

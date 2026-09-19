@@ -9,10 +9,7 @@ import { countGenerationEvents } from "@/lib/db/generationEvents";
 import { buildProfileSummary } from "@/lib/profile-summary";
 import { isUserLevel } from "@/lib/levels";
 import { isLanguageId } from "@/lib/languages";
-import { isTutorId } from "@/lib/tutors";
 import type { ProfileUpdate } from "@/lib/types/profile";
-
-const DAILY_GOAL_OPTIONS = [5, 10, 20, 30];
 
 export async function GET() {
   const supabase = await createClient();
@@ -85,27 +82,6 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "Invalid targetLanguage" }, { status: 400 });
     }
     updates.target_language = body.targetLanguage;
-  }
-
-  if ("nativeLanguage" in body) {
-    if (!isLanguageId(body.nativeLanguage)) {
-      return NextResponse.json({ error: "Invalid nativeLanguage" }, { status: 400 });
-    }
-    updates.native_language = body.nativeLanguage;
-  }
-
-  if ("dailyGoalMinutes" in body) {
-    if (!DAILY_GOAL_OPTIONS.includes(body.dailyGoalMinutes as number)) {
-      return NextResponse.json({ error: "Invalid dailyGoalMinutes" }, { status: 400 });
-    }
-    updates.daily_goal_minutes = body.dailyGoalMinutes as number;
-  }
-
-  if ("tutorId" in body) {
-    if (!isTutorId(body.tutorId)) {
-      return NextResponse.json({ error: "Invalid tutorId" }, { status: 400 });
-    }
-    updates.tutor_id = body.tutorId;
   }
 
   if (Object.keys(updates).length === 0) {

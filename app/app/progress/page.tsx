@@ -42,13 +42,16 @@ export default function ProgressPage() {
   ];
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <h1 className="font-display text-3xl text-ink">Progress</h1>
-      <p className="mt-1.5 text-base text-sub">Your learning journey so far</p>
+    <div className="mx-auto max-w-[1180px]">
+      <header>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent-brand">Your learning record</p>
+        <h1 className="mt-2 font-display text-3xl leading-tight text-ink sm:text-4xl">Progress</h1>
+        <p className="mt-2 text-base text-sub">Your learning journey so far</p>
+      </header>
 
-      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
         {tiles.map((tile) => (
-          <div key={tile.label} className="rounded-2xl border border-line bg-surface p-4">
+          <div key={tile.label} className="rounded-2xl border border-line bg-surface p-4 sm:p-5">
             <tile.icon className="h-4 w-4 text-accent-brand" aria-hidden />
             <p className="mt-2 font-display text-2xl text-ink">{tile.value}</p>
             <p className="mt-0.5 text-xs text-sub">{tile.label}</p>
@@ -64,7 +67,7 @@ export default function ProgressPage() {
         />
       </div>
 
-      <section className="mt-8" aria-labelledby="history-heading">
+      <section className="mt-10" aria-labelledby="history-heading">
         <h2 id="history-heading" className="font-display text-xl text-ink">
           Conversation history
         </h2>

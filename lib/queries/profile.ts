@@ -1,11 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { QUERY_KEYS } from "./keys";
 import type { ProfileSummary } from "@/lib/types/profile";
+import { hasUserPreferences, loadUserPreferences } from "@/lib/user-preferences";
+
+export function mergeLocalPreferences(profile: ProfileSummary): ProfileSummary {
+  if (!hasUserPreferences(profile.id)) return profile;
+  const preferences = loadUserPreferences(profile.id);
+  return {
+    ...profile,
+    tutorId: preferences.tutorId,
+    nativeLanguage: preferences.nativeLanguage,
+    dailyGoalMinutes: preferences.dailyGoalMinutes,
+  };
+}
 
 async function fetchProfile(): Promise<ProfileSummary> {
   const res = await fetch("/api/profile");
   if (!res.ok) throw Object.assign(new Error("Failed to fetch profile"), { status: res.status });
-  return res.json();
+  return mergeLocalPreferences((await res.json()) as ProfileSummary);
 }
 
 export function useProfile() {

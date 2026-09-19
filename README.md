@@ -4,7 +4,7 @@
 
 ## Overview
 
-Fina Web lets learners hold a live spoken conversation with an AI tutor in the language they're learning, instead of only drilling vocabulary lists. A visitor completes a short onboarding flow (tutor → language → level → motivation → daily goal → 30-day plan preview), signs up, and lands in an authenticated app: roleplay-driven voice conversations, AI-generated vocabulary lessons with flashcards, a 30-day study plan, streaks, and a Fina Pro subscription.
+Fina Web lets learners hold a live spoken conversation with an AI tutor in the language they're learning, instead of only drilling vocabulary lists. A visitor completes a short onboarding flow (tutor → language → level → motivation → daily goal), signs up, and lands in an authenticated app: roleplay-driven voice conversations, AI-generated vocabulary lessons with flashcards, a 30-day study plan, streaks, and a Fina Pro subscription.
 
 It targets the same Supabase project and user base as the Fina mobile app (Expo/React Native, `~/Desktop/fina`), reusing its `profiles`, `lesson_progress`, `favorite_words`, `generated_lessons`, `custom_roleplays`, and `feedback` tables and adding one web-only table (`conversation_sessions`) plus a handful of new `profiles` columns via an additive migration.
 
@@ -20,7 +20,7 @@ Each item below is wired to a route or module in this repo:
 - **AI vocabulary generation** (`app/app/vocabulary/generate/`, `app/api/ai/vocabulary/route.ts`) — 12-word lessons from a topic, gated by the free/Pro allowance, saved to `generated_lessons`.
 - **Flashcards and review** (`app/app/vocabulary/lessons/[lessonId]/`, `app/app/vocabulary/favorites/`, `components/vocabulary/*`) — word, IPA, part of speech, definition, example, pronunciation playback, favoriting, and a flip-card review mode.
 - **Static lesson library** (`lib/data/lessons/`) — bundled lessons for Arabic, Chinese, English, French, German, Japanese, Portuguese, Russian, and Spanish.
-- **Onboarding** (`app/onboarding/`) — tutor → language → level → motivation → daily goal → plan preview → AI consent, stored in `localStorage` (`lib/onboarding-storage.ts`) and synced to the profile after sign-up via `POST /api/profile/onboarding`.
+- **Onboarding** (`app/onboarding/`) — tutor → language → level → motivation → daily goal, stored in `localStorage` (`lib/onboarding-storage.ts`) and synced to the existing profile row after sign-up via `POST /api/profile/onboarding`.
 - **30-day study plan** (`app/app/study-plan/`, `lib/study-plan.ts`, `lib/study-plan-storage.ts`) — by-week layout, today highlight, per-section (speak/words) local ticks, completed days on the profile.
 - **Streaks** (`lib/streak.ts`, `components/home/StreakCard.tsx`, `components/conversation/StreakWeek.tsx`) — server-computed daily streak and weekly-activity dots, updated on conversation completion.
 - **Pronunciation playback** (`lib/hooks/usePronunciation.ts`, `/api/tts`) — Inworld TTS per language/voice, falling back to `speechSynthesis`; audio cached in memory only (no Storage bucket writes from web).

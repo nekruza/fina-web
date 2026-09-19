@@ -52,7 +52,7 @@ export function StreakCard({ currentStreak, weeklyActivity, isLoading = false, n
         <div className="h-3.5 w-20 rounded bg-line motion-safe:animate-pulse" aria-hidden />
       )}
 
-      <div className="mt-4 flex items-center justify-between gap-4">
+      <div className="mt-4 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
         {isLoading ? (
           <div className="space-y-2">
             <div className="h-9 w-20 rounded-lg bg-line motion-safe:animate-pulse" aria-hidden />
@@ -67,7 +67,7 @@ export function StreakCard({ currentStreak, weeklyActivity, isLoading = false, n
           </div>
         )}
 
-        <ol aria-label="This week" className="flex gap-1.5">
+        <ol aria-label="This week" className="flex w-full justify-between gap-1.5 sm:w-auto sm:justify-normal">
           {WEEK.map((day) => {
             const active = !isLoading && !!weeklyActivity[day.index];
             const isToday = day.index === today;

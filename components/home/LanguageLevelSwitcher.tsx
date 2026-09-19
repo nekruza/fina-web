@@ -25,13 +25,14 @@ export function LanguageLevelSwitcher({ language, level, onLanguageChange, onLev
   const currentLevelLabel = levelLabel(level);
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1 rounded-2xl border border-line bg-surface p-1 shadow-[0_8px_20px_-18px_rgba(27,26,23,0.35)]">
+      <span className="hidden px-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-sub sm:block">Learning</span>
       <Popover open={languageOpen} onOpenChange={setLanguageOpen}>
         <PopoverTrigger asChild>
           <button
             type="button"
             aria-label={`Current language: ${currentLanguage.label}. Change language.`}
-            className="flex items-center gap-0.5 rounded-full p-2 text-2xl transition hover:bg-cream focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"
+            className="flex items-center gap-0.5 rounded-xl p-2 text-2xl transition-[background-color] hover:bg-cream focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"
           >
             <span aria-hidden>{currentLanguage.flag}</span>
             <ChevronDown className="h-4 w-4 text-sub" aria-hidden />
@@ -49,7 +50,7 @@ export function LanguageLevelSwitcher({ language, level, onLanguageChange, onLev
                     onLanguageChange(l.id);
                     setLanguageOpen(false);
                   }}
-                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition ${
+                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand ${
                     l.id === language ? "bg-accent-soft font-semibold text-ink" : "text-ink hover:bg-cream"
                   }`}
                 >
@@ -69,7 +70,7 @@ export function LanguageLevelSwitcher({ language, level, onLanguageChange, onLev
           <button
             type="button"
             aria-label={`Current level: ${currentLevelLabel}. Change level.`}
-            className="flex items-center gap-1 rounded-full px-2 py-2 transition hover:bg-cream focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"
+            className="flex items-center gap-1 rounded-xl px-2 py-2 transition-[background-color] hover:bg-cream focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"
           >
             <span className="text-lg font-semibold text-ink">{currentLevelLabel}</span>
             <ChevronDown className="h-3.5 w-3.5 text-ink" aria-hidden />
@@ -87,7 +88,7 @@ export function LanguageLevelSwitcher({ language, level, onLanguageChange, onLev
                     onLevelChange(lvl.id);
                     setLevelOpen(false);
                   }}
-                  className={`w-full rounded-xl px-3 py-2 text-left text-sm transition ${
+                  className={`w-full rounded-xl px-3 py-2 text-left text-sm transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand ${
                     lvl.id === level ? "bg-accent-soft font-semibold text-ink" : "text-ink hover:bg-cream"
                   }`}
                 >

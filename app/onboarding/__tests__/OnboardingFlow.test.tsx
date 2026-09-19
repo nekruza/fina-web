@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import "@testing-library/jest-dom";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { OnboardingFlow } from "../OnboardingFlow";
 import { ONBOARDING_KEY } from "@/lib/onboarding-storage";
 
@@ -28,7 +28,7 @@ describe("OnboardingFlow", () => {
     jest.useRealTimers();
   });
 
-  it("walks the full step order, gates Continue on a choice, and requires consent before submitting", async () => {
+  it("submits directly after the final question without showing a plan preview", async () => {
     render(<OnboardingFlow />);
 
     // Step 1: tutor — Luna is preselected by default, so Continue is enabled immediately.
@@ -57,34 +57,17 @@ describe("OnboardingFlow", () => {
 
     // Step 5: goal
     expect(screen.getByRole("heading", { name: "How much time can you give me daily?" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Build my plan" })).toBeDisabled();
-    fireEvent.click(screen.getByRole("radio", { name: /10 min per day/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Build my plan" }));
-
-    // Step 6: generating — auto-advances to reveal.
-    expect(screen.getByText("Crafting your plan…")).toBeInTheDocument();
-    act(() => {
-      jest.advanceTimersByTime(3000);
-    });
-    await waitFor(() => expect(screen.getByText("YOUR PLAN IS READY")).toBeInTheDocument());
-    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-
-    // Step 8: consent — submit disabled until the checkbox is checked (and the
-    // signed-in check has resolved).
-    await waitFor(() => expect(screen.getByText("AI-Powered Features")).toBeInTheDocument());
     expect(screen.getByRole("button", { name: "Create my account" })).toBeDisabled();
-    fireEvent.click(
-      screen.getByRole("checkbox", {
-        name: "I understand and consent to my conversation data and voice audio being processed by the AI services listed above.",
-      })
-    );
+    fireEvent.click(screen.getByRole("radio", { name: /10 min per day/ }));
     await waitFor(() => expect(screen.getByRole("button", { name: "Create my account" })).toBeEnabled());
     fireEvent.click(screen.getByRole("button", { name: "Create my account" }));
 
+    expect(screen.queryByText("Crafting your plan…")).not.toBeInTheDocument();
+    expect(screen.queryByText("YOUR PLAN IS READY")).not.toBeInTheDocument();
     expect(push).toHaveBeenCalledWith("/signup?next=/onboarding/complete");
   });
 
-  it("shows 'Finish setup' and routes to /onboarding/complete when already signed in", async () => {
+  it("routes a signed-in user with complete saved answers straight to completion", async () => {
     getUser.mockResolvedValue({ data: { user: { id: "u1" } } });
     window.localStorage.setItem(
       ONBOARDING_KEY,
@@ -93,14 +76,8 @@ describe("OnboardingFlow", () => {
 
     render(<OnboardingFlow />);
 
-    await waitFor(() => expect(screen.getByText("AI-Powered Features")).toBeInTheDocument());
-    await waitFor(() => expect(screen.getByRole("button", { name: "Finish setup" })).toBeInTheDocument());
-
-    fireEvent.click(screen.getByRole("checkbox"));
-    await waitFor(() => expect(screen.getByRole("button", { name: "Finish setup" })).toBeEnabled());
-    fireEvent.click(screen.getByRole("button", { name: "Finish setup" }));
-
-    expect(push).toHaveBeenCalledWith("/onboarding/complete");
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/onboarding/complete"));
+    expect(screen.queryByText("YOUR PLAN IS READY")).not.toBeInTheDocument();
   });
 
   it("resumes at the first incomplete step when reloaded mid-flow", async () => {
@@ -125,6 +102,14 @@ describe("OnboardingFlow", () => {
     fireEvent.click(screen.getByRole("button", { name: "Continue with Luna" }));
 
     expect(screen.getByRole("button", { name: "Go back" })).toBeInTheDocument();
+  });
+
+  it("does not show the AI provider disclosure while onboarding", async () => {
+    render(<OnboardingFlow />);
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Continue with Luna" })).toBeInTheDocument());
+    expect(screen.queryByText("Google Gemini")).not.toBeInTheDocument();
+    expect(screen.queryByText("Inworld AI")).not.toBeInTheDocument();
   });
 
   it("moves focus to the next step's heading after Continue", async () => {

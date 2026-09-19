@@ -33,18 +33,11 @@ export default async function AppLayout({
     redirect("/onboarding");
   }
 
-  let avatarUrl: string | null = null;
-  if (!bypassAuth) {
-    const { data: profile } = await supabase!
-      .from("profiles")
-      .select("avatar_url")
-      .eq("id", user.id)
-      .single();
-    avatarUrl = profile?.avatar_url ?? null;
-  }
+  const metadataAvatar = user.user_metadata?.avatar_url;
+  const avatarUrl = typeof metadataAvatar === "string" ? metadataAvatar : null;
 
   return (
-    <div className="flex h-screen overflow-hidden relative bg-cream">
+    <div className="flex min-h-screen flex-col bg-cream md:flex-row">
       <AppLayoutClient
         userId={user.id}
         userEmail={user.email ?? null}
