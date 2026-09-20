@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import "@testing-library/jest-dom";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import RoleplayPage from "../page";
 import type { CustomRoleplayRecord } from "@/lib/types/roleplay";
 
@@ -143,5 +143,19 @@ describe("RoleplayPage custom roleplays loading state", () => {
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
     // Predefined "life" scenarios still render immediately.
     expect(screen.getByText("Introductions")).toBeInTheDocument();
+  });
+});
+
+describe("RoleplayPage mobile filter layout", () => {
+  it("keeps filter badges on one horizontally scrollable row on mobile", () => {
+    setup();
+    render(<RoleplayPage />);
+
+    const filterGroup = screen.getByRole("group", { name: "Filter roleplays" });
+
+    expect(filterGroup).toHaveClass("flex-nowrap", "overflow-x-auto", "md:flex-wrap", "md:overflow-visible");
+    for (const filter of within(filterGroup).getAllByRole("button")) {
+      expect(filter).toHaveClass("shrink-0");
+    }
   });
 });

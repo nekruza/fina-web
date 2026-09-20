@@ -70,4 +70,16 @@ test.describe("home", () => {
 
     await expect(page.getByText("Thanks for your feedback")).toBeVisible();
   });
+
+  test("keeps feedback out of the mobile navigation and places it below the home content", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/app");
+
+    const mobileNavigation = page.getByRole("navigation", { name: "Mobile navigation" });
+    await expect(mobileNavigation.getByRole("button", { name: "Feedback" })).toHaveCount(0);
+
+    const feedback = page.getByRole("button", { name: "Give us feedback" });
+    await expect(feedback).toBeVisible();
+    await expect(feedback.locator("xpath=ancestor::main")).toHaveCount(1);
+  });
 });

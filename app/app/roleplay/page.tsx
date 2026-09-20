@@ -122,7 +122,11 @@ export default function RoleplayPage() {
         </div>
       </section>
 
-      <div className="mt-8 flex flex-wrap gap-2" role="group" aria-label="Filter roleplays">
+      <div
+        className="mt-8 flex flex-nowrap gap-2 overflow-x-auto overscroll-x-contain pb-1 md:flex-wrap md:overflow-visible md:pb-0"
+        role="group"
+        aria-label="Filter roleplays"
+      >
         {FILTERS.map(({ id, label }) => {
           const active = filter === id;
           return (
@@ -131,7 +135,7 @@ export default function RoleplayPage() {
               type="button"
               aria-pressed={active}
               onClick={() => setFilter(id)}
-              className={`rounded-full border px-4 py-2 text-[13px] font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand ${
+              className={`shrink-0 rounded-full border px-4 py-2 text-[13px] font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand md:shrink ${
                 active ? "border-ink bg-ink text-cream" : "border-line bg-surface text-sub hover:border-sub/40"
               }`}
             >

@@ -178,7 +178,7 @@ export function HomeClient() {
               <button
                 type="button"
                 onClick={() => feedbackDialog.open()}
-                className="group hidden w-full items-center gap-3 py-3 text-left last:pb-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent-brand sm:flex"
+                className="group hidden w-full items-center gap-3 py-3 text-left last:pb-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent-brand md:flex"
               >
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cream text-ink">
                   <MessageSquare className="h-5 w-5" aria-hidden />
@@ -193,6 +193,23 @@ export function HomeClient() {
           </section>
         </aside>
       </div>
+
+      <section className="mt-8 md:hidden" aria-labelledby="mobile-feedback-heading">
+        <button
+          type="button"
+          onClick={() => feedbackDialog.open()}
+          className="group flex w-full items-center gap-3 rounded-[1.75rem] border border-line bg-surface p-5 text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent-brand"
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cream text-ink">
+            <MessageSquare className="h-5 w-5" aria-hidden />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span id="mobile-feedback-heading" className="block text-sm font-semibold text-ink">Give us feedback</span>
+            <span className="mt-0.5 block text-xs leading-relaxed text-sub">Help make Fina better</span>
+          </span>
+          <ArrowRight className="h-4 w-4 shrink-0 text-sub transition-transform group-hover:translate-x-0.5" aria-hidden />
+        </button>
+      </section>
 
       <ProUpgradeDialog open={upgradeOpen} onClose={() => setUpgradeOpen(false)} reason="upgrade" />
     </div>

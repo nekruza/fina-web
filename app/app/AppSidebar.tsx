@@ -188,14 +188,6 @@ export const AppSidebar: FC<AppSidebarProps> = ({ userEmail, avatarUrl }) => {
               </Link>
             );
           })}
-          <button
-            type="button"
-            onClick={feedbackDialog.open}
-            className="flex min-h-11 min-w-[52px] flex-col items-center justify-center gap-0.5 rounded-xl px-2 py-1.5 text-[10px] font-semibold text-sub transition-[background-color,color] hover:bg-cream hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"
-          >
-            <MessageSquare className="h-[18px] w-[18px]" aria-hidden />
-            <span>Feedback</span>
-          </button>
         </div>
       </nav>
     </>
