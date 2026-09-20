@@ -28,7 +28,27 @@ jest.mock("@/lib/hooks/useAudioVisualizer", () => ({
 }))
 jest.mock("../VideoArea", () => ({ VideoArea: () => null }))
 jest.mock("../TranscriptPanel", () => ({ TranscriptPanel: () => null }))
-jest.mock("../ControlBar", () => ({ ControlBar: () => null }))
+jest.mock("../ControlBar", () => ({
+	ControlBar: ({
+		onToggleTypedInput,
+		typedInputOpen,
+		typedInputDisabled,
+	}: {
+		onToggleTypedInput: () => void
+		typedInputOpen: boolean
+		typedInputDisabled?: boolean
+	}) => (
+		<button
+			type="button"
+			aria-label="Type a message"
+			aria-pressed={typedInputOpen}
+			disabled={typedInputDisabled}
+			onClick={onToggleTypedInput}
+		>
+			Type a message
+		</button>
+	),
+}))
 jest.mock("../HintOverlay", () => ({ HintOverlay: () => null }))
 jest.mock("../NotesPanel", () => ({ NotesPanel: () => null }))
 
@@ -120,6 +140,23 @@ it("passes the started conversation session into realtime setup", async () => {
 			}),
 		),
 	)
+})
+
+it("only opens the typed reply after the message control is clicked", async () => {
+	useInworldRealtime.mockReturnValue({
+		connect,
+		disconnect,
+		messages: [],
+		agentState: "listening",
+		agentAudioStream: null,
+	})
+	renderCall()
+	await waitFor(() => expect(connect).toHaveBeenCalled())
+	expect(screen.queryByRole("textbox", { name: "Type a message" })).not.toBeInTheDocument()
+
+	await screen.findByText("Your turn")
+	fireEvent.click(screen.getByRole("button", { name: "Type a message" }))
+	expect(await screen.findByRole("textbox", { name: "Type a message" })).toBeVisible()
 })
 
 it("shows recovery when the provider rejects a response after connecting", async () => {

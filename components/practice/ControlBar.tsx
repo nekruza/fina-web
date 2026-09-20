@@ -9,8 +9,7 @@ import {
   Video,
   VideoOff,
   StopCircle,
-  Pause,
-  Play,
+  MessageSquare,
 } from "lucide-react";
 
 interface ControlBarProps {
@@ -23,9 +22,9 @@ interface ControlBarProps {
   onStop: () => void;
   onToggleNotes: () => void;
   notesOpen: boolean;
-  onPause: () => void;
-  isPaused: boolean;
-  pauseDisabled?: boolean;
+  onToggleTypedInput: () => void;
+  typedInputOpen: boolean;
+  typedInputDisabled?: boolean;
   onInterrupt?: () => void;
   isAISpeaking?: boolean;
 }
@@ -88,9 +87,9 @@ export const ControlBar: FC<ControlBarProps> = ({
   onStop,
   onToggleNotes,
   notesOpen,
-  onPause,
-  isPaused,
-  pauseDisabled,
+  onToggleTypedInput,
+  typedInputOpen,
+  typedInputDisabled,
   onInterrupt,
   isAISpeaking,
 }) => (
@@ -135,17 +134,12 @@ export const ControlBar: FC<ControlBarProps> = ({
       pressed={cameraOn}
     />
     <ControlButton
-      icon={
-        isPaused ? (
-          <Play className={`${iconClass} text-white/80`} aria-hidden />
-        ) : (
-          <Pause className={`${iconClass} text-white/80`} aria-hidden />
-        )
-      }
-      label={isPaused ? "Resume" : "Pause"}
-      onClick={onPause}
-      active={isPaused}
-      disabled={pauseDisabled}
+      icon={<MessageSquare className={`${iconClass} text-white/80`} aria-hidden />}
+      label="Type a message"
+      onClick={onToggleTypedInput}
+      active={typedInputOpen}
+      pressed={typedInputOpen}
+      disabled={typedInputDisabled}
     />
     {isAISpeaking && onInterrupt && (
       <ControlButton

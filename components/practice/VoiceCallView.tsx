@@ -82,6 +82,7 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 	const [connectionFailed, setConnectionFailed] = useState(false)
 	const [cameraOn, setCameraOn] = useState(true)
 	const [autoSend, setAutoSend] = useState(false)
+	const [typedInputOpen, setTypedInputOpen] = useState(false)
 	const [typedText, setTypedText] = useState("")
 	const [goalDismissed, setGoalDismissed] = useState(false)
 
@@ -544,6 +545,7 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 			const text = typedText.trim()
 			if (!text || convStateRef.current !== "listening") return
 			setTypedText("")
+			setTypedInputOpen(false)
 
 			if (useRealtime) {
 				speech.stopListening()
@@ -634,39 +636,6 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 		},
 		[speech, tts, voice, locale],
 	)
-
-	// ── Pause / Resume ──
-	const handlePause = useCallback(() => {
-		if (convState === "paused") {
-			timer.start()
-			if (useRealtime) {
-				// Set convState directly; STT auto-starts via the convState effect.
-				// Note: if a response is still in-flight when pause was pressed, the
-				// agentState sync effect will overwrite this back to "ai_speaking".
-				setConvState("listening")
-			} else {
-				startListeningToUser()
-			}
-		} else {
-			setConvState("paused")
-			timer.pause()
-			if (useRealtime) {
-				realtime.cancelResponse()
-				// STT auto-stops via convState effect
-			} else {
-				speech.stopListening()
-				tts.cancel()
-			}
-		}
-	}, [
-		convState,
-		timer,
-		speech,
-		tts,
-		startListeningToUser,
-		useRealtime,
-		realtime,
-	])
 
 	// ── Stop / End session ──
 	const handleStop = useCallback(() => {
@@ -1068,18 +1037,16 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 							onStop={handleStop}
 							onToggleNotes={() => setShowNotes((v) => !v)}
 							notesOpen={showNotes}
-							onPause={handlePause}
-							isPaused={convState === "paused"}
-							pauseDisabled={
-								convState === "initializing" || convState === "ending"
-							}
+							onToggleTypedInput={() => setTypedInputOpen((v) => !v)}
+							typedInputOpen={typedInputOpen}
+							typedInputDisabled={convState !== "listening"}
 							onInterrupt={useRealtime ? handleInterrupt : undefined}
 							isAISpeaking={convState === "ai_speaking"}
 						/>
 					</div>
 
 					{/* Typed reply — an alternative to speaking */}
-					{convState === "listening" && (
+					{typedInputOpen && convState === "listening" && (
 						<form
 							onSubmit={handleTypedSubmit}
 							className="shrink-0 mx-auto flex w-full max-w-md items-center gap-2"
@@ -1092,6 +1059,7 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 								placeholder="Type instead…"
 								lang={locale}
 								autoComplete="off"
+								autoFocus
 								maxLength={500}
 								className="h-10 min-w-0 flex-1 rounded-full border border-white/10 bg-white/[0.06] px-4 text-sm text-white placeholder:text-white/35 outline-none transition focus:border-[#4ade80]/50 focus-visible:ring-2 focus-visible:ring-[#4ade80]/25"
 							/>
