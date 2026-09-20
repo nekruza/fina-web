@@ -14,7 +14,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const sessionId = searchParams.get("session_id");
-  const origin = process.env.NEXT_PUBLIC_APP_URL ?? new URL(req.url).origin;
+  const origin = process.env.NEXT_PUBLIC_APP_URL?.trim() || new URL(req.url).origin;
 
   if (!sessionId) {
     return NextResponse.redirect(`${origin}/app/settings`);

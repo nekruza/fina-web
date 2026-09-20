@@ -3,6 +3,7 @@ import { Fraunces, Manrope } from "next/font/google";
 import "./globals.css";
 import { MixpanelInit } from "@/components/MixpanelInit";
 import { Analytics } from "@vercel/analytics/next"
+import { SITE_URL } from "@/lib/site";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -18,10 +19,8 @@ const manrope = Manrope({
   display: "swap",
 });
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://fina-ai-app.vercel.app";
-
 export const metadata: Metadata = {
-  metadataBase: new URL(BASE_URL),
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "Fina — Speak English with confidence",
     template: "%s | Fina",
@@ -40,7 +39,7 @@ export const metadata: Metadata = {
     "AI English coach",
     "English speaking practice app",
   ],
-  authors: [{ name: "Fina Team", url: BASE_URL }],
+  authors: [{ name: "Fina Team", url: SITE_URL }],
   creator: "Fina",
   publisher: "Fina",
   category: "Education",
@@ -52,7 +51,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: BASE_URL,
+    url: SITE_URL,
     siteName: "Fina",
     title: "Fina — Speak English with confidence",
     description:
@@ -93,7 +92,7 @@ export const metadata: Metadata = {
     apple: "/logo.png",
   },
   alternates: {
-    canonical: BASE_URL,
+    canonical: SITE_URL,
   },
 };
 

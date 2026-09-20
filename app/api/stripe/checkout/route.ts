@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "already_pro" }, { status: 409 });
   }
 
-  const origin = process.env.NEXT_PUBLIC_APP_URL ?? new URL(req.url).origin;
+  const origin = process.env.NEXT_PUBLIC_APP_URL?.trim() || new URL(req.url).origin;
   const planDetails = PLANS[plan];
 
   try {

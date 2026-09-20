@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No billing account" }, { status: 404 });
   }
 
-  const origin = process.env.NEXT_PUBLIC_APP_URL ?? new URL(req.url).origin;
+  const origin = process.env.NEXT_PUBLIC_APP_URL?.trim() || new URL(req.url).origin;
 
   try {
     const portalSession = await getStripe().billingPortal.sessions.create({
