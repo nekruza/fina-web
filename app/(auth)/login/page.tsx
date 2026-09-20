@@ -27,7 +27,7 @@ function LoginForm() {
   const nextParam = searchParams.get("next");
   const next = safeNext(nextParam);
   const displayedError = error ?? (searchParams.get("error") === "auth_callback_failed"
-    ? "Sign-in could not be completed. Please try again with Apple, Google, or your email below."
+    ? "Sign-in could not be completed. Please try again with Google or your email below."
     : null);
   const supabase = createClient();
 

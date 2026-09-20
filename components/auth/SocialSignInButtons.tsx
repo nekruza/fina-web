@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { track } from "@/lib/mixpanel";
 import { safeNext } from "@/lib/safe-next";
 
-type SocialProvider = "google" | "apple";
+type SocialProvider = "google";
 
 interface SocialSignInButtonsProps {
   next: string;
@@ -41,28 +41,20 @@ export function SocialSignInButtons({ next, disabled, onError, onPendingChange }
 
   return (
     <div className="space-y-3">
-      {(["google", "apple"] as const).map((provider) => (
+      {(["google"] as const).map((provider) => (
         <button
           key={provider}
           type="button"
           onClick={() => signIn(provider)}
           disabled={disabled || pending !== null}
           aria-busy={pending === provider}
-          className={`flex h-12 w-full items-center justify-center gap-2.5 rounded-xl border text-sm font-bold transition-colors disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand ${provider === "apple" ? "border-black bg-black text-white hover:bg-black/85" : "border-line bg-surface text-ink hover:border-ink/40"}`}
+          className="flex h-12 w-full items-center justify-center gap-2.5 rounded-xl border border-line bg-surface text-sm font-bold text-ink transition-colors hover:border-ink/40 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"
         >
-          {provider === "apple" ? <AppleIcon /> : <GoogleIcon />}
-          {pending === provider ? "Redirecting…" : `Continue with ${provider === "apple" ? "Apple" : "Google"}`}
+          <GoogleIcon />
+          {pending === provider ? "Redirecting…" : "Continue with Google"}
         </button>
       ))}
     </div>
-  );
-}
-
-function AppleIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="shrink-0">
-      <path d="M17.05 12.04c.03 3.29 2.89 4.38 2.92 4.4-.02.08-.46 1.57-1.51 3.11-.91 1.33-1.85 2.65-3.34 2.68-1.46.03-1.93-.87-3.6-.87s-2.19.84-3.57.9c-1.44.05-2.53-1.44-3.45-2.77C2.62 16.77 1.18 11.8 3.11 8.45c.96-1.66 2.67-2.71 4.52-2.74 1.41-.03 2.74.95 3.6.95.85 0 2.46-1.18 4.15-1.01.71.03 2.7.29 3.98 2.16-.1.07-2.38 1.38-2.31 4.23ZM14.3 3.85c.76-.92 1.27-2.2 1.13-3.48-1.1.04-2.44.74-3.23 1.66-.71.81-1.33 2.11-1.16 3.36 1.23.09 2.49-.63 3.26-1.54Z" />
-    </svg>
   );
 }
 
