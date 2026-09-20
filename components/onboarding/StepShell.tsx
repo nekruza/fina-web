@@ -27,7 +27,7 @@ export function StepShell({
   const tutor = getTutorById(tutorId);
 
   return (
-    <div className="flex min-h-screen flex-col bg-cream">
+    <div className="flex h-[100dvh] flex-col overflow-hidden bg-cream">
       <div className="px-5 pb-3 pt-8 sm:pt-12">
         <div className="mb-3 flex items-center gap-2.5">
           {onBack && (
@@ -58,9 +58,14 @@ export function StepShell({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 pb-6 pt-3">{children}</div>
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-32 pt-3">{children}</div>
 
-      <div className="px-5 pb-6 pt-2">{footer}</div>
+      <div
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-cream/95 px-5 pt-3 backdrop-blur-sm"
+        style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}
+      >
+        {footer}
+      </div>
     </div>
   );
 }

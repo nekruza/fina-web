@@ -289,7 +289,7 @@ function TutorStep({
 }) {
   const currentName = getTutorById(selected).name;
   return (
-    <div className="flex min-h-screen flex-col bg-cream px-5 pb-6 pt-10 sm:pt-16">
+    <div className="flex h-[100dvh] flex-col overflow-hidden bg-cream px-5 pt-10 sm:pt-16">
       <div className="mb-6 flex gap-1">
         <div className="h-[3px] flex-1 rounded-full bg-ink" />
         {[0, 1, 2, 3, 4].map((i) => (
@@ -306,7 +306,7 @@ function TutorStep({
       </h1>
       <p className="mb-6 text-base text-sub">You can switch anytime. All fluent in 9 languages.</p>
 
-      <div role="radiogroup" aria-label="Choose your tutor" className="flex-1 space-y-3">
+      <div role="radiogroup" aria-label="Choose your tutor" className="min-h-0 flex-1 space-y-3 overflow-y-auto pb-32">
         {TUTORS.map((t) => {
           const isSelected = selected === t.id;
           return (
@@ -338,7 +338,10 @@ function TutorStep({
         })}
       </div>
 
-      <div className="mt-6">
+      <div
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-cream/95 px-5 pt-3 backdrop-blur-sm"
+        style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}
+      >
         <PrimaryButton label={`Continue with ${currentName}`} onClick={onContinue} />
       </div>
     </div>
