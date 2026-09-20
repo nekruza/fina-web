@@ -6,6 +6,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { track } from "@/lib/mixpanel";
 import { safeNext } from "@/lib/safe-next";
+import { getAuthOrigin } from "@/lib/auth-redirect";
 import { SocialSignInButtons } from "@/components/auth/SocialSignInButtons";
 
 export default function SignupPage() {
@@ -40,7 +41,7 @@ function SignupForm() {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+        emailRedirectTo: `${getAuthOrigin()}/auth/callback?next=${encodeURIComponent(next)}`,
       },
     });
 

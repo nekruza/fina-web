@@ -4,6 +4,7 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { track } from "@/lib/mixpanel";
 import { safeNext } from "@/lib/safe-next";
+import { getAuthOrigin } from "@/lib/auth-redirect";
 
 type SocialProvider = "google";
 
@@ -28,7 +29,7 @@ export function SocialSignInButtons({ next, disabled, onError, onPendingChange }
       const { error } = await createClient().auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(safeNext(next))}`,
+          redirectTo: `${getAuthOrigin()}/auth/callback?next=${encodeURIComponent(safeNext(next))}`,
         },
       });
       if (error) throw error;
