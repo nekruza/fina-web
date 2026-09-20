@@ -500,6 +500,29 @@ describe("server events", () => {
     ]);
   });
 
+  it("does not duplicate a transcript shared by text and audio output", async () => {
+    const { result } = renderHook(() => useInworldRealtime());
+    const dc = await connected(result);
+    const transcript = "It is nice to meet you, Cruz.";
+
+    act(() =>
+      dc.deliver({
+        type: "response.output_item.done",
+        item: {
+          role: "assistant",
+          content: [
+            { type: "output_text", text: transcript, transcript },
+            { type: "output_audio", transcript },
+          ],
+        },
+      })
+    );
+
+    expect(result.current.messages).toEqual([
+      { role: "assistant", content: transcript },
+    ]);
+  });
+
   it("ignores an assistant item with no transcript", async () => {
     const { result } = renderHook(() => useInworldRealtime());
     const dc = await connected(result);

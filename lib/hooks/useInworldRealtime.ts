@@ -123,13 +123,24 @@ export function useInworldRealtime(): UseInworldRealtimeReturn {
       setAgentState("idle");
     } else if (type === "response.output_item.done") {
       // Inworld sends full transcript here (no streaming text deltas)
-      const item = parsed.item as { role?: string; content?: { type: string; transcript?: string }[] } | undefined;
+      const item = parsed.item as {
+        role?: string;
+        content?: { type: string; text?: string; transcript?: string }[];
+      } | undefined;
       if (item?.role === "assistant" && item.content) {
-        const transcript = item.content
-          .filter((c) => c.transcript)
-          .map((c) => c.transcript)
-          .join(" ")
-          .trim();
+        // The same assistant turn can contain matching output_text and
+        // output_audio parts. Prefer the text part so the caption is added once;
+        // audio-only responses may still arrive as multiple transcript chunks.
+        const textPart = item.content.find(
+          (c) => c.type === "output_text" && (c.text || c.transcript)
+        );
+        const transcript = textPart
+          ? (textPart.text || textPart.transcript || "").trim()
+          : item.content
+              .filter((c) => c.transcript)
+              .map((c) => c.transcript)
+              .join(" ")
+              .trim();
         if (transcript) {
           setMessages((prev) => [...prev, { role: "assistant", content: transcript }]);
         }
