@@ -1,43 +1,11 @@
-import type { Metadata } from "next";
-import { Navigation } from "@/components/Navigation";
-import { Footer } from "@/components/Footer";
-import { Hero } from "@/components/landing/Hero";
-import { HowItWorks } from "@/components/landing/HowItWorks";
-import { Features } from "@/components/landing/Features";
-import { Pricing } from "@/components/landing/Pricing";
-import { FAQ } from "@/components/landing/FAQ";
-import { FinalCta } from "@/components/landing/FinalCta";
-import {
-  FaqSchema,
-  OrganizationSchema,
-  SoftwareApplicationSchema,
-  WebsiteSchema,
-} from "@/components/structured-data/OrganizationSchema";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
 
-export const metadata: Metadata = {
-  title: { absolute: "Fina — Speak English with confidence" },
-  description:
-    "Practice real English conversations with AI tutors Luna, Henry and Jake. Build speaking confidence with roleplays, instant feedback, vocabulary and a 30-day plan.",
-  alternates: { canonical: "/" },
-};
+export async function Home() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
-export default function Home() {
-  return (
-    <>
-      <OrganizationSchema />
-      <WebsiteSchema />
-      <SoftwareApplicationSchema />
-      <FaqSchema />
-      <Navigation />
-      <main id="main-content" className="overflow-x-clip bg-cream text-ink">
-        <Hero />
-        <HowItWorks />
-        <Features />
-        <Pricing />
-        <FAQ />
-        <FinalCta />
-      </main>
-      <Footer />
-    </>
-  );
+  redirect(user ? "/app" : "/login");
 }
+
+export default Home;

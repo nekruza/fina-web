@@ -40,9 +40,9 @@ export default function AuthLayout({
             </div>
 
             <h2 className="mb-4 font-display text-[2.6rem] font-bold leading-[1.1] text-ink">
-              Speak a new
+              Build confidence
               <br />
-              language in 30 days.
+              through conversation.
             </h2>
             <p className="max-w-[300px] text-sm leading-relaxed text-sub">
               Meet Henry, Jake &amp; Luna — AI tutors who&apos;ll have real conversations with you, at your level, on

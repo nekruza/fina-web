@@ -2,21 +2,14 @@ import { test, expect } from "../support/test";
 import { signIn } from "../support/auth";
 
 /**
- * Landing page copy, the full onboarding flow through to signup, and the
+ * The auth entrypoint, full onboarding flow through to signup, and the
  * auth/onboarding gates on `/app`.
  */
 
-test.describe("landing page", () => {
-  test("shows the headline and a way to get started", async ({ page }) => {
+test.describe("auth entrypoint", () => {
+  test("sends a signed-out visitor at the root to login", async ({ page }) => {
     await page.goto("/");
-
-    await expect(
-      page.getByRole("heading", { name: "Speak a new language in 30 days." })
-    ).toBeVisible();
-
-    const getStarted = page.getByRole("link", { name: "Get started" }).first();
-    await expect(getStarted).toBeVisible();
-    await expect(getStarted).toHaveAttribute("href", "/onboarding");
+    await expect(page).toHaveURL(/\/login/);
   });
 });
 
