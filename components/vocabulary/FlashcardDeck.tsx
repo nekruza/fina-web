@@ -143,15 +143,15 @@ export function FlashcardDeck({
       ) : (
         <div className="flex flex-1 flex-col items-center justify-center gap-6 px-4">
           <div
-            className="relative flex w-full justify-center"
+            className="relative isolate flex w-full justify-center"
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
           >
-            {/* Decorative peek of the next card in the stack, for a tactile deck feel. */}
+            {/* Keep the decorative card behind the face within this isolated stack. */}
             {currentIndex + 1 < total && (
               <div
                 aria-hidden
-                className="pointer-events-none absolute inset-0 mx-auto hidden w-full max-w-sm translate-y-2 rotate-1 rounded-[2rem] border border-line bg-surface opacity-70 motion-safe:sm:block"
+                className="pointer-events-none absolute inset-0 -z-10 mx-auto hidden w-full max-w-sm translate-y-2 rotate-1 rounded-[2rem] border border-line bg-surface opacity-70 motion-safe:sm:block"
               />
             )}
             {currentWord && (

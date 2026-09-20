@@ -68,6 +68,7 @@ let stream: ReturnType<typeof micStream>;
 let getUserMedia: jest.Mock;
 
 const CONFIG: RealtimeConfig = {
+  sessionId: "session-1",
   instructions: "You are Henry, a Spanish conversation partner.",
   voice: "Clive",
   model: "inworld-realtime-1",
@@ -128,7 +129,7 @@ describe("connect", () => {
       await result.current.connect(CONFIG);
     });
 
-    expect(mockFetch().mock.calls[0][0]).toBe("/api/realtime/config");
+    expect(mockFetch().mock.calls[0][0]).toBe("/api/realtime/config?sessionId=session-1");
     expect(MockPeerConnection.last.config.iceServers).toEqual([
       { urls: "stun:example" },
     ]);
@@ -158,6 +159,7 @@ describe("connect", () => {
     expect(mockFetch().mock.calls[1][0]).toBe("/api/realtime/connect");
     expect(JSON.parse(mockFetch().mock.calls[1][1].body)).toEqual({
       sdp: "v=0\r\noffer\r\n",
+      sessionId: CONFIG.sessionId,
     });
     expect(MockPeerConnection.last.setRemoteDescription).toHaveBeenCalledWith({
       type: "answer",
@@ -279,8 +281,26 @@ describe("hybrid (text) mode", () => {
 });
 
 describe("connection failures", () => {
+  it("rejects a missing session before requesting configuration or microphone access", async () => {
+    const { result } = renderHook(() => useInworldRealtime());
+    await expect(result.current.connect({ ...CONFIG, sessionId: "" })).rejects.toThrow("Start a conversation before connecting");
+    expect(mockFetch()).not.toHaveBeenCalled();
+    expect(getUserMedia).not.toHaveBeenCalled();
+  });
+
+  it("includes the server reason when configuration is rejected", async () => {
+    mockFetch().mockReset().mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      json: async () => ({ error: "invalid_session" }),
+    });
+    const { result } = renderHook(() => useInworldRealtime());
+    await expect(result.current.connect(CONFIG)).rejects.toThrow("403 — invalid_session");
+    expect(getUserMedia).not.toHaveBeenCalled();
+  });
+
   it("throws when the config endpoint fails", async () => {
-    mockFetch().mockReset().mockResolvedValueOnce({ ok: false, status: 500 });
+    mockFetch().mockReset().mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({}) });
     const { result } = renderHook(() => useInworldRealtime());
 
     await expect(
@@ -356,6 +376,39 @@ describe("connection failures", () => {
 });
 
 describe("server events", () => {
+  it("reports provider errors instead of leaving the response processing", async () => {
+    const { result } = renderHook(() => useInworldRealtime());
+    const dc = await connected(result);
+    act(() => dc.deliver({ type: "response.created" }));
+    act(() => dc.deliver({ type: "error", error: { message: "The requested model is not supported" } }));
+    expect(result.current.error).toBe("The requested model is not supported");
+    expect(result.current.agentState).toBe("idle");
+  });
+
+  it("does not treat a failed greeting as a successful response", async () => {
+    const { result } = renderHook(() => useInworldRealtime());
+    const dc = await connected(result);
+    dc.send.mockClear();
+    act(() => dc.deliver({ type: "response.done", response: { status: "failed", status_details: { error: { message: "Model unavailable" } } } }));
+    expect(result.current.error).toBe("Model unavailable");
+    expect(dc.send).not.toHaveBeenCalled();
+  });
+
+  it("provides a fallback error when a failed response has no detail", async () => {
+    const { result } = renderHook(() => useInworldRealtime());
+    const dc = await connected(result);
+    act(() => dc.deliver({ type: "response.done", response: { status: "failed" } }));
+    expect(result.current.error).toBe("Your tutor couldn’t respond. Please start a new conversation.");
+  });
+
+  it("clears the provider error on disconnect", async () => {
+    const { result } = renderHook(() => useInworldRealtime());
+    const dc = await connected(result);
+    act(() => dc.deliver({ type: "error", error: { message: "Unavailable" } }));
+    act(() => result.current.disconnect());
+    expect(result.current.error).toBeNull();
+  });
+
   it("kicks off the greeting when the session is confirmed", async () => {
     const { result } = renderHook(() => useInworldRealtime());
     const dc = await connected(result);

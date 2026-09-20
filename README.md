@@ -25,26 +25,26 @@ Each item below is wired to a route or module in this repo:
 - **Streaks** (`lib/streak.ts`, `components/home/StreakCard.tsx`, `components/conversation/StreakWeek.tsx`) — server-computed daily streak and weekly-activity dots, updated on conversation completion.
 - **Pronunciation playback** (`lib/hooks/usePronunciation.ts`, `/api/tts`) — Inworld TTS per language/voice, falling back to `speechSynthesis`; audio cached in memory only (no Storage bucket writes from web).
 - **Fina Pro subscription** (`app/api/stripe/*`, `lib/billing.ts`, `lib/stripe.ts`) — Stripe Checkout subscription (monthly $9.99 / yearly $59.99) with inline `price_data` (no dashboard price IDs needed), billing portal, and webhook-driven Pro status.
-- **Accounts** — Google OAuth and email/password via Supabase Auth (`app/(auth)/*`, `app/auth/callback/`).
+- **Accounts** — Apple and Google OAuth, plus email/password via Supabase Auth (`app/(auth)/*`, `app/auth/callback/`). Apple web OAuth requires [provider configuration](docs/apple-sign-in.md).
 - **Feedback and account deletion** (`components/FeedbackProvider.tsx`, `app/api/account/route.ts`) — in-app feedback form; account deletion cancels an active Stripe subscription, deletes the user's rows, then deletes the auth user.
 
 ## Tech Stack
 
-| Layer | Technology | Notes |
-|---|---|---|
-| Framework | Next.js 16.1.6 (App Router) | React 19.2.3, RSC-first |
-| Language | TypeScript 5 | `strict: true`, `@/*` path alias to repo root |
-| Styling | Tailwind CSS v4 + shadcn/ui (`new-york`) | PostCSS via `@tailwindcss/postcss`; Radix primitives (`radix-ui`); `lucide-react` icons; Fraunces (display, `font-display`) + Manrope (UI, `font-sans`) via `next/font/google` |
-| Client state | TanStack Query v5 | Keys centralised in `lib/queries/keys.ts`; `sonner` for toasts; `next-themes` |
-| Database + Auth | Supabase (Postgres, Auth) | `@supabase/ssr` cookie sessions; browser client for RLS-scoped reads/writes, service-role admin client for privileged server writes |
-| Conversation LLM | Google Gemini 2.5 Flash Lite → OpenAI `gpt-5.4-mini` fallback | SSE streaming through `lib/llm.ts` |
-| Realtime voice | Inworld Realtime (WebRTC) | Server brokers ICE servers and the SDP exchange (`app/api/realtime/*`); model `google-ai-studio/gemini-3.1-flash-lite-preview` |
-| TTS | Inworld TTS 1.5 Mini → Chutes Kokoro → Web `SpeechSynthesis` | Three-tier fallback in `app/api/tts/route.ts` and `lib/hooks/useSpeechSynthesis.ts` |
-| STT | Web Speech Recognition API | `lib/hooks/useSpeechRecognition.ts`, locale per target language; best supported in Chrome/Edge |
-| Payments | Stripe (`stripe` v20) | Checkout `mode: "subscription"`, billing portal, webhook |
-| Analytics | Mixpanel (EU host), Vercel Analytics | `lib/mixpanel.ts`, `components/MixpanelInit.tsx` |
-| Testing | Jest 30 + Testing Library, Playwright | `next/jest`, `testEnvironment: "node"` by default, jsdom opt-in per file |
-| Tooling | ESLint 9 (`eslint-config-next`), npm | Lockfile is `package-lock.json` |
+| Layer            | Technology                                                    | Notes                                                                                                                                                                          |
+| ---------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Framework        | Next.js 16.1.6 (App Router)                                   | React 19.2.3, RSC-first                                                                                                                                                        |
+| Language         | TypeScript 5                                                  | `strict: true`, `@/*` path alias to repo root                                                                                                                                  |
+| Styling          | Tailwind CSS v4 + shadcn/ui (`new-york`)                      | PostCSS via `@tailwindcss/postcss`; Radix primitives (`radix-ui`); `lucide-react` icons; Fraunces (display, `font-display`) + Manrope (UI, `font-sans`) via `next/font/google` |
+| Client state     | TanStack Query v5                                             | Keys centralised in `lib/queries/keys.ts`; `sonner` for toasts; `next-themes`                                                                                                  |
+| Database + Auth  | Supabase (Postgres, Auth)                                     | `@supabase/ssr` cookie sessions; browser client for RLS-scoped reads/writes, service-role admin client for privileged server writes                                            |
+| Conversation LLM | Google Gemini 2.5 Flash Lite → OpenAI `gpt-5.4-mini` fallback | SSE streaming through `lib/llm.ts`                                                                                                                                             |
+| Realtime voice   | Inworld Realtime (WebRTC)                                     | Server brokers ICE servers and the SDP exchange (`app/api/realtime/*`); model `google-ai-studio/gemini-3.8-flash`                                                              |
+| TTS              | Inworld TTS 1.5 Mini → Chutes Kokoro → Web `SpeechSynthesis`  | Three-tier fallback in `app/api/tts/route.ts` and `lib/hooks/useSpeechSynthesis.ts`                                                                                            |
+| STT              | Web Speech Recognition API                                    | `lib/hooks/useSpeechRecognition.ts`, locale per target language; best supported in Chrome/Edge                                                                                 |
+| Payments         | Stripe (`stripe` v20)                                         | Checkout `mode: "subscription"`, billing portal, webhook                                                                                                                       |
+| Analytics        | Mixpanel (EU host), Vercel Analytics                          | `lib/mixpanel.ts`, `components/MixpanelInit.tsx`                                                                                                                               |
+| Testing          | Jest 30 + Testing Library, Playwright                         | `next/jest`, `testEnvironment: "node"` by default, jsdom opt-in per file                                                                                                       |
+| Tooling          | ESLint 9 (`eslint-config-next`), npm                          | Lockfile is `package-lock.json`                                                                                                                                                |
 
 ## Architecture
 
@@ -182,14 +182,14 @@ Onboarding: `localStorage` key `fina_onboarding` (`lib/onboarding-storage.ts`) �
 
 Existing Fina tables (shared with the mobile app; schemas live in the Supabase project, not in this repo, except where noted):
 
-| Table | Key fields | Purpose |
-|---|---|---|
-| `profiles` | `id` (→ `auth.users`), `email`, `display_name`, `user_level`, `target_language`, `learning_motivation`, `daily_goal_minutes`, `current_streak`, `last_conversation_date`, `weekly_activity`, `words_learned`, `accuracy`, `study_plan_start_date`, `study_plan_completed_days`, plus the web-only columns below | One row per user: onboarding results, streaks, 30-day plan progress, billing |
-| `lesson_progress` | `user_id`, `lesson_id`, `completed_words`, `current_word_index`, `time_spent`, `accuracy`, `is_completed` | Per-lesson progress and completion, unique on `(user_id, lesson_id)` |
-| `favorite_words` | `user_id`, `word_id`, `word_data` | Saved vocabulary for the favorites/review flow |
-| `generated_lessons` | `user_id`, `topic`, `difficulty`, `lesson_data`, `is_global` | AI-generated vocabulary lessons (paginated + searchable) |
-| `custom_roleplays` | `user_id`, `title`, `category`, `difficulty`, `user_role`, `ai_role`, `scenario` | User-authored roleplay scenarios |
-| `feedback` | `user_id` (nullable), `type`, `message` | In-app feedback |
+| Table               | Key fields                                                                                                                                                                                                                                                                                                      | Purpose                                                                      |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `profiles`          | `id` (→ `auth.users`), `email`, `display_name`, `user_level`, `target_language`, `learning_motivation`, `daily_goal_minutes`, `current_streak`, `last_conversation_date`, `weekly_activity`, `words_learned`, `accuracy`, `study_plan_start_date`, `study_plan_completed_days`, plus the web-only columns below | One row per user: onboarding results, streaks, 30-day plan progress, billing |
+| `lesson_progress`   | `user_id`, `lesson_id`, `completed_words`, `current_word_index`, `time_spent`, `accuracy`, `is_completed`                                                                                                                                                                                                       | Per-lesson progress and completion, unique on `(user_id, lesson_id)`         |
+| `favorite_words`    | `user_id`, `word_id`, `word_data`                                                                                                                                                                                                                                                                               | Saved vocabulary for the favorites/review flow                               |
+| `generated_lessons` | `user_id`, `topic`, `difficulty`, `lesson_data`, `is_global`                                                                                                                                                                                                                                                    | AI-generated vocabulary lessons (paginated + searchable)                     |
+| `custom_roleplays`  | `user_id`, `title`, `category`, `difficulty`, `user_role`, `ai_role`, `scenario`                                                                                                                                                                                                                                | User-authored roleplay scenarios                                             |
+| `feedback`          | `user_id` (nullable), `type`, `message`                                                                                                                                                                                                                                                                         | In-app feedback                                                              |
 
 New in `supabase/migrations/20260913000000_fina_web.sql` — **additive and idempotent; must be applied manually in the Supabase SQL editor** (this repo does not run it):
 
@@ -198,17 +198,17 @@ New in `supabase/migrations/20260913000000_fina_web.sql` — **additive and idem
 
 ### External Integrations
 
-| Service | Used for | Called from |
-|---|---|---|
-| Supabase Auth | Google OAuth, email/password | `lib/supabase/{client,server,middleware}.ts`, `app/auth/callback/` |
-| Supabase Postgres | All persistence (shared with the mobile app) | `lib/db/*`, most API routes |
-| Google Gemini | Conversation turns, hints, feedback, translation, vocabulary generation | `lib/llm.ts` (server) |
-| OpenAI | LLM fallback when Gemini throws | `lib/llm.ts` (server) |
-| Inworld Realtime | WebRTC voice session | `app/api/realtime/*` (server) |
-| Inworld TTS / Chutes Kokoro | Pronunciation + tutor voice audio | `app/api/tts` (server) |
-| Stripe | Fina Pro subscription: Checkout, billing portal, webhook | `app/api/stripe/*` (server) |
-| Mixpanel | Product analytics (EU residency host) | `lib/mixpanel.ts` (client) |
-| Vercel Analytics | Web analytics | `app/layout.tsx` (client) |
+| Service                     | Used for                                                                | Called from                                                        |
+| --------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Supabase Auth               | Apple/Google OAuth, email/password                                      | `lib/supabase/{client,server,middleware}.ts`, `app/auth/callback/` |
+| Supabase Postgres           | All persistence (shared with the mobile app)                            | `lib/db/*`, most API routes                                        |
+| Google Gemini               | Conversation turns, hints, feedback, translation, vocabulary generation | `lib/llm.ts` (server)                                              |
+| OpenAI                      | LLM fallback when Gemini throws                                         | `lib/llm.ts` (server)                                              |
+| Inworld Realtime            | WebRTC voice session                                                    | `app/api/realtime/*` (server)                                      |
+| Inworld TTS / Chutes Kokoro | Pronunciation + tutor voice audio                                       | `app/api/tts` (server)                                             |
+| Stripe                      | Fina Pro subscription: Checkout, billing portal, webhook                | `app/api/stripe/*` (server)                                        |
+| Mixpanel                    | Product analytics (EU residency host)                                   | `lib/mixpanel.ts` (client)                                         |
+| Vercel Analytics            | Web analytics                                                           | `app/layout.tsx` (client)                                          |
 
 ## Getting Started
 
@@ -228,22 +228,22 @@ cp .env.example .env.local   # then fill in the values
 
 See `.env.example` for the authoritative, commented list. Summary:
 
-| Variable | Required | Purpose |
-|---|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | yes | Fina Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | yes | Fina Supabase anon key |
-| `NEXT_PUBLIC_FINA_AUTH_DISABLED` | no | Development-only auth bypass when set to `true`; ignored in production |
-| `SUPABASE_SERVICE_ROLE_KEY` | yes for billing + deletion | Stripe webhook, verify-purchase, and auth-user deletion |
-| `GOOGLE_GEMINI_API_KEY` | yes | Primary LLM for conversation turns, hints, feedback, translation, vocabulary |
-| `OPENAI_API_KEY` | yes | LLM fallback when the Gemini stream throws |
-| `INWORLD_API_KEY` | yes | Realtime ICE servers, SDP exchange, and TTS synthesis |
-| `INWORLD_VOICE_ID` | no | Default TTS voice when no language/tutor voice is supplied |
-| `NEXT_PUBLIC_INWORLD_REALTIME_ENABLED` | no | `"true"` enables WebRTC realtime voice; otherwise Web Speech fallback |
-| `CHUTES_API_KEY` | no | Kokoro TTS fallback when Inworld fails |
-| `STRIPE_SECRET_KEY` | for payments | Checkout, billing portal, webhook, verify-purchase, subscription cancel on delete |
-| `STRIPE_WEBHOOK_SECRET` | for payments | Verifies `/api/stripe/webhook` signatures |
-| `NEXT_PUBLIC_APP_URL` | no | Absolute origin for Stripe URLs and `metadataBase`; falls back to the request origin |
-| `NEXT_PUBLIC_MIXPANEL_TOKEN` | no | Enables Mixpanel; analytics is a no-op when unset |
+| Variable                               | Required                   | Purpose                                                                              |
+| -------------------------------------- | -------------------------- | ------------------------------------------------------------------------------------ |
+| `NEXT_PUBLIC_SUPABASE_URL`             | yes                        | Fina Supabase project URL                                                            |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY`        | yes                        | Fina Supabase anon key                                                               |
+| `NEXT_PUBLIC_FINA_AUTH_DISABLED`       | no                         | Development-only auth bypass when set to `true`; ignored in production               |
+| `SUPABASE_SERVICE_ROLE_KEY`            | yes for billing + deletion | Stripe webhook, verify-purchase, and auth-user deletion                              |
+| `GOOGLE_GEMINI_API_KEY`                | yes                        | Primary LLM for conversation turns, hints, feedback, translation, vocabulary         |
+| `OPENAI_API_KEY`                       | yes                        | LLM fallback when the Gemini stream throws                                           |
+| `INWORLD_API_KEY`                      | yes                        | Realtime ICE servers, SDP exchange, and TTS synthesis                                |
+| `INWORLD_VOICE_ID`                     | no                         | Default TTS voice when no language/tutor voice is supplied                           |
+| `NEXT_PUBLIC_INWORLD_REALTIME_ENABLED` | no                         | `"true"` enables WebRTC realtime voice; otherwise Web Speech fallback                |
+| `CHUTES_API_KEY`                       | no                         | Kokoro TTS fallback when Inworld fails                                               |
+| `STRIPE_SECRET_KEY`                    | for payments               | Checkout, billing portal, webhook, verify-purchase, subscription cancel on delete    |
+| `STRIPE_WEBHOOK_SECRET`                | for payments               | Verifies `/api/stripe/webhook` signatures                                            |
+| `NEXT_PUBLIC_APP_URL`                  | no                         | Absolute origin for Stripe URLs and `metadataBase`; falls back to the request origin |
+| `NEXT_PUBLIC_MIXPANEL_TOKEN`           | no                         | Enables Mixpanel; analytics is a no-op when unset                                    |
 
 For a temporary local UI preview without signing in, set
 `NEXT_PUBLIC_FINA_AUTH_DISABLED=true` in `.env.local` and restart the dev
@@ -296,6 +296,7 @@ Deploys to Vercel from this repo.
    - `customer.subscription.deleted`
 
    Copy the endpoint's signing secret into `STRIPE_WEBHOOK_SECRET`.
+
 4. `npm run build` / Vercel's default Next.js build both work unmodified — there is no custom build step.
 
 ## Known Limitations

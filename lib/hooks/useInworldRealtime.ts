@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import type { Message } from "@/lib/types/conversation";
 
 export interface RealtimeConfig {
+  sessionId: string;
   instructions: string;
   voice: string;
   model: string;
@@ -14,6 +15,7 @@ export interface UseInworldRealtimeReturn {
   connect: (config: RealtimeConfig) => Promise<void>;
   disconnect: () => void;
   isConnected: boolean;
+  error: string | null;
   agentState: "idle" | "speaking" | "listening" | "processing";
   messages: Message[];
   agentAudioStream: MediaStream | null;
@@ -26,6 +28,7 @@ export interface UseInworldRealtimeReturn {
 
 export function useInworldRealtime(): UseInworldRealtimeReturn {
   const [isConnected, setIsConnected] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [agentState, setAgentState] = useState<"idle" | "speaking" | "listening" | "processing">("idle");
   const [messages, setMessages] = useState<Message[]>([]);
   const [agentAudioStream, setAgentAudioStream] = useState<MediaStream | null>(null);
@@ -55,6 +58,25 @@ export function useInworldRealtime(): UseInworldRealtimeReturn {
 
     const type = parsed.type as string;
     console.log("[inworld event]", type, parsed);
+
+    if (type === "error") {
+      const providerError = parsed.error as { message?: string } | undefined;
+      setError(providerError?.message ?? "Your tutor couldn’t respond. Please start a new conversation.");
+      setAgentState("idle");
+      return;
+    }
+
+    if (type === "response.done") {
+      const response = parsed.response as {
+        status?: string;
+        status_details?: { error?: { message?: string } };
+      } | undefined;
+      if (response?.status === "failed") {
+        setError((previous) => previous ?? response.status_details?.error?.message ?? "Your tutor couldn’t respond. Please start a new conversation.");
+        setAgentState("idle");
+        return;
+      }
+    }
 
     if (type === "session.updated") {
       if (!greetingDoneRef.current) {
@@ -119,15 +141,20 @@ export function useInworldRealtime(): UseInworldRealtimeReturn {
         setMessages((prev) => [...prev, { role: "user", content: transcript }]);
       }
     }
-  }, []);
+  }, [sendEvent]);
 
   const connect = useCallback(async (config: RealtimeConfig) => {
     if (pcRef.current) return;
+    if (!config.sessionId) throw new Error("Start a conversation before connecting");
+    setError(null);
 
     hybridModeRef.current = config.hybridMode ?? false;
 
-    const configRes = await fetch("/api/realtime/config");
-    if (!configRes.ok) throw new Error("Failed to fetch realtime config");
+    const configRes = await fetch(`/api/realtime/config?${new URLSearchParams({ sessionId: config.sessionId })}`);
+    if (!configRes.ok) {
+      const body = await configRes.json().catch(() => ({})) as { error?: string };
+      throw new Error(`Failed to fetch realtime config: ${configRes.status} — ${body.error ?? "unknown"}`);
+    }
     const { iceServers } = await configRes.json() as { iceServers: RTCIceServer[] };
 
     let micStream: MediaStream | null = null;
@@ -201,7 +228,7 @@ export function useInworldRealtime(): UseInworldRealtimeReturn {
       const sdpRes = await fetch("/api/realtime/connect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sdp: offer.sdp }),
+        body: JSON.stringify({ sdp: offer.sdp, sessionId: config.sessionId }),
       });
 
       if (!sdpRes.ok) {
@@ -232,6 +259,7 @@ export function useInworldRealtime(): UseInworldRealtimeReturn {
     hybridModeRef.current = false;
 
     setIsConnected(false);
+    setError(null);
     setAgentState("idle");
     setAgentAudioStream(null);
     setMessages([]);
@@ -292,6 +320,7 @@ export function useInworldRealtime(): UseInworldRealtimeReturn {
     connect,
     disconnect,
     isConnected,
+    error,
     agentState,
     messages,
     agentAudioStream,
