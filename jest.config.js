@@ -27,12 +27,15 @@ module.exports = createJestConfig({
     '!**/*.d.ts',
   ],
 
-  // A ratchet, not a target: set just below current coverage so a regression
-  // fails CI while normal work doesn't trip it. Raise these as coverage grows.
+  // json-summary feeds the coverage table in the CI job summary.
+  coverageReporters: ['clover', 'json', 'json-summary', 'lcov', 'text'],
+
+  // 90% is the floor enforced on every pull request (.github/workflows/ci.yml).
+  // Treat these as a ratchet: raise them as coverage grows, never lower them.
   coverageThreshold: {
     global: {
       statements: 90,
-      branches: 85,
+      branches: 90,
       functions: 90,
       lines: 92,
     },

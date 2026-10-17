@@ -3,7 +3,20 @@ import { createSupabaseMock, type SupabaseMockConfig } from "@/test-utils/supaba
 
 jest.mock("@/lib/supabase/server", () => ({ createClient: jest.fn() }));
 
+// Pass-through spies: the real helpers run, but tests can read the arguments
+// the route hands them and override the free-tier count.
+jest.mock("@/lib/db/conversations", () => {
+  const actual = jest.requireActual("@/lib/db/conversations");
+  return {
+    ...actual,
+    countConversations: jest.fn(actual.countConversations),
+    completeConversation: jest.fn(actual.completeConversation),
+    listConversations: jest.fn(actual.listConversations),
+  };
+});
+
 const { createClient } = jest.requireMock("@/lib/supabase/server");
+const { countConversations, completeConversation, listConversations } = jest.requireMock("@/lib/db/conversations");
 
 const USER = { id: "user-1", email: "jane@example.com" };
 
@@ -89,6 +102,25 @@ describe("POST /api/conversations", () => {
 
     expect(res.status).toBe(400);
   });
+
+  it("returns 403 limit_reached once a free user has used every free conversation", async () => {
+    mockSupabase();
+    countConversations.mockResolvedValueOnce(3);
+
+    const res = await POST(postReq(VALID_CREATE_BODY));
+
+    expect(res.status).toBe(403);
+    await expect(res.json()).resolves.toEqual({ error: "limit_reached" });
+  });
+
+  it("lets a Pro user past the free conversation limit", async () => {
+    mockSupabase({ profile: { pro_status: "active", pro_current_period_end: null } });
+    countConversations.mockResolvedValueOnce(10);
+
+    const res = await POST(postReq(VALID_CREATE_BODY));
+
+    expect(res.status).toBe(200);
+  });
 });
 
 describe("PATCH /api/conversations", () => {
@@ -146,6 +178,92 @@ describe("PATCH /api/conversations", () => {
     expect(res.status).toBe(200);
     expect(mock.calls.filter((c) => c.table === "profiles" && (c.builder.update as jest.Mock).mock.calls.length > 0)).toHaveLength(0);
   });
+
+  it("sanitizes the analysis: clamps scores, caps lists, and stringifies fields", async () => {
+    mockSupabase({ profile: null });
+
+    await PATCH(
+      patchReq({
+        sessionId: "s1",
+        messageCount: 2,
+        analysis: {
+          overall: 150,
+          fluency: -5,
+          grammar: "not a number",
+          vocabulary: 70,
+          engagement: 60,
+          relevancy: 50,
+          summary: 42,
+          strengths: ["a", "b", "c", "d"],
+          corrections: [null, { original: "goed", corrected: "went", explanation: "irregular" }, {}, {}, {}, {}],
+        },
+      })
+    );
+
+    const analysis = completeConversation.mock.calls[0][3].analysis;
+    expect(analysis).toMatchObject({ overall: 100, fluency: 0, grammar: 0, vocabulary: 70, summary: "" });
+    expect(analysis.strengths).toEqual(["a", "b", "c"]);
+    expect(analysis.corrections).toHaveLength(5);
+    expect(analysis.corrections[0]).toEqual({ original: "", corrected: "", explanation: "" });
+    expect(analysis.corrections[1]).toEqual({ original: "goed", corrected: "went", explanation: "irregular" });
+  });
+
+  it("keeps a string summary and defaults missing lists to empty", async () => {
+    mockSupabase();
+
+    await PATCH(patchReq({ sessionId: "s1", analysis: { summary: "Nice work" } }));
+
+    expect(completeConversation.mock.calls[0][3].analysis).toMatchObject({
+      summary: "Nice work",
+      strengths: [],
+      corrections: [],
+    });
+  });
+
+  it.each([
+    ["an array", [1, 2]],
+    ["a string", "great"],
+    ["null", null],
+  ])("drops an analysis that is %s", async (_label, analysis) => {
+    mockSupabase();
+
+    await PATCH(patchReq({ sessionId: "s1", analysis }));
+
+    expect(completeConversation.mock.calls[0][3].analysis).toBeNull();
+  });
+
+  it("coerces non-numeric duration and message counts to zero", async () => {
+    mockSupabase();
+
+    await PATCH(patchReq({ sessionId: "s1", durationSeconds: "abc", messageCount: "xyz" }));
+
+    expect(completeConversation.mock.calls[0][3]).toMatchObject({ durationSeconds: 0, messageCount: 0 });
+  });
+
+  it("falls back to the server date and weekday when the client sends invalid ones", async () => {
+    mockSupabase({ profile: null });
+
+    const res = await PATCH(
+      patchReq({ sessionId: "s1", messageCount: 3, localDate: "13/09/2026", dayOfWeek: 9 })
+    );
+
+    // Fake time is Sunday 2026-09-13, so the server-side fallback marks index 0.
+    await expect(res.json()).resolves.toEqual({
+      ok: true,
+      streak: { current: 1, weeklyActivity: [true, false, false, false, false, false, false], lastConversationDate: "2026-09-13" },
+    });
+  });
+
+  it("does not rewrite the streak when today was already counted", async () => {
+    const mock = mockSupabase({
+      profile: { current_streak: 4, last_conversation_date: "2026-09-13", weekly_activity: null },
+    });
+
+    const res = await PATCH(patchReq({ sessionId: "s1", messageCount: 5, localDate: "2026-09-13", dayOfWeek: 0 }));
+
+    expect((await res.json()).streak.current).toBe(4);
+    expect(mock.calls.filter((c) => c.table === "profiles" && (c.builder.update as jest.Mock).mock.calls.length > 0)).toHaveLength(0);
+  });
 });
 
 describe("GET /api/conversations", () => {
@@ -163,5 +281,18 @@ describe("GET /api/conversations", () => {
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({ sessions: [] });
     expect(mock.callCountFor("conversation_sessions")).toBe(0);
+  });
+
+  it.each([
+    ["no limit", "", 20],
+    ["a non-numeric limit", "?limit=abc", 20],
+    ["a limit above 50", "?limit=500", 50],
+    ["a limit below 1", "?limit=0", 1],
+  ])("clamps %s to %i", async (_label, query, expected) => {
+    mockSupabase();
+
+    await GET(getReq(query));
+
+    expect(listConversations).toHaveBeenCalledWith(expect.anything(), USER.id, expected);
   });
 });
