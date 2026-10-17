@@ -61,6 +61,49 @@ test.describe("lessons list", () => {
   });
 });
 
+test.describe("studying a lesson", () => {
+  const lesson = lessonFixture();
+  const lessonUrl = `/app/vocabulary/lessons/g-${lesson.supabaseId}`;
+
+  test.beforeEach(async ({ context, api }) => {
+    await signIn(context);
+    await api.table("generated_lessons", [{ id: lesson.supabaseId, lesson_data: lesson }]);
+  });
+
+  test("working through every card completes the lesson and records it", async ({ page }) => {
+    await page.goto(lessonUrl);
+    await expect(page.getByText("1 of 2")).toBeVisible();
+
+    await page.getByRole("button", { name: "Next word" }).click();
+    await expect(page.getByText("2 of 2")).toBeVisible();
+    await page.getByRole("button", { name: "Next word" }).click();
+
+    await expect(page.getByRole("heading", { name: "Lesson complete! 🎉" })).toBeVisible();
+    await expect(page.getByText(`You've learned 2 new words in ${lesson.title}`)).toBeVisible();
+
+    const progress = page.waitForRequest(
+      (req) => req.url().includes("/rest/v1/lesson_progress") && req.method() === "POST"
+    );
+    await page.getByRole("button", { name: "Done" }).click();
+
+    expect((await progress).postData()).toContain(`g-${lesson.supabaseId}`);
+    await expect(page).toHaveURL(/\/app\/vocabulary\/lessons$/);
+  });
+
+  test("hearting a word saves it to favorites", async ({ page }) => {
+    await page.goto(lessonUrl);
+    await expect(page.getByText("1 of 2")).toBeVisible();
+
+    const save = page.waitForRequest(
+      (req) => req.url().includes("/rest/v1/favorite_words") && req.method() === "POST"
+    );
+    await page.getByRole("button", { name: "Add to favorites" }).click();
+
+    expect((await save).postDataJSON()).toMatchObject({ word_id: lesson.vocabularyWords[0].id });
+    await expect(page.getByRole("button", { name: "Remove from favorites" })).toBeVisible();
+  });
+});
+
 test.describe("generate words", () => {
   test.beforeEach(async ({ context }) => {
     await signIn(context);
@@ -121,5 +164,28 @@ test.describe("favorites", () => {
 
     await expect(page.getByRole("button", { name: "Practice" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Review" })).toBeVisible();
+  });
+
+  test("Review mode walks through every favorite to a completion state", async ({ page, api }) => {
+    const [first, second] = lessonFixture().vocabularyWords;
+    await api.table("favorite_words", [
+      { word_id: first.id, word_data: first },
+      { word_id: second.id, word_data: second },
+    ]);
+    await page.goto("/app/vocabulary/favorites");
+
+    await page.getByRole("button", { name: "Review" }).click();
+    await expect(page.getByRole("button", { name: "Review" })).toHaveAttribute("aria-pressed", "true");
+
+    const card = page.getByRole("button", { name: `${first.word}. Tap to see definition.` });
+    await card.click();
+    await expect(page.getByText(first.definition, { exact: true })).toBeVisible();
+
+    await page.getByRole("button", { name: "I know this" }).click();
+    await expect(page.getByRole("button", { name: `${second.word}. Tap to see definition.` })).toBeVisible();
+    await page.getByRole("button", { name: "Need practice" }).click();
+
+    await expect(page.getByText("Review complete")).toBeVisible();
+    await expect(page.getByText("You've been through all 2 words.")).toBeVisible();
   });
 });

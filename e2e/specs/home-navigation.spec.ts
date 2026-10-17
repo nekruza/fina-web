@@ -1,5 +1,13 @@
-import { test, expect } from "../support/test";
+import { test, expect, type Page } from "../support/test";
 import { signIn } from "../support/auth";
+
+/**
+ * Feedback is a "Share feedback" quick action on desktop and a separate
+ * "Give us feedback" card below the content on mobile; only one is visible.
+ */
+function feedbackButton(page: Page) {
+  return page.getByRole("button", { name: /Share feedback|Give us feedback/ }).filter({ visible: true });
+}
 
 /**
  * The signed-in home dashboard: greeting, streak, today's plan, quick
@@ -20,12 +28,12 @@ test.describe("home", () => {
     await expect(page.getByText(/2\s*🔥/)).toBeVisible();
     await expect(page.getByText("Today’s Plan")).toBeVisible();
 
-    await expect(page.getByText("Voice chat", { exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Start speaking/ })).toBeVisible();
     // "Words" alone is ambiguous with the "Words" nav label, which is present
     // (if not visible) in both the desktop sidebar and the mobile bottom nav
     // regardless of viewport — match the quick-action card by its full text instead.
     await expect(page.getByRole("link", { name: /Words.*manage your vocabulary/i })).toBeVisible();
-    await expect(page.getByRole("button", { name: /Give us feedback/ })).toBeVisible();
+    await expect(feedbackButton(page)).toBeVisible();
   });
 
   test("reaches Roleplay from the primary navigation", async ({ page }) => {
@@ -62,7 +70,7 @@ test.describe("home", () => {
     await api.table("feedback", []);
     await page.goto("/app");
 
-    await page.getByRole("button", { name: "Give us feedback" }).click();
+    await feedbackButton(page).click();
     await expect(page.getByRole("heading", { name: "Share your feedback" })).toBeVisible();
 
     await page.getByPlaceholder(/Tell us what you think/i).fill("Loving the app so far!");

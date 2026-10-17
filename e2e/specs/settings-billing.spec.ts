@@ -85,6 +85,70 @@ test.describe("settings", () => {
     await expect(page.getByRole("button", { name: "Upgrade to Pro" })).toHaveCount(0);
   });
 
+  test("returning from a successful checkout welcomes the new Pro subscriber", async ({ page, api }) => {
+    // Known bug: the settings page fires the welcome toast in a mount effect,
+    // but <Toaster> renders after the page in AppLayoutClient, so it isn't
+    // subscribed yet and sonner drops the toast. Remove this line once fixed.
+    test.fail();
+    // The webhook has landed by the first poll, so the page settles as Pro.
+    await api.json(
+      "**/api/profile",
+      profileFixture({
+        pro: { isPro: true, status: "active", currentPeriodEnd: "2099-01-01T00:00:00.000Z", hasCustomer: true },
+      })
+    );
+    await page.goto("/app/settings?upgraded=1");
+
+    await expect(page.getByText("Welcome to Fina Pro!")).toBeVisible();
+    await expect(page).toHaveURL(/\/app\/settings$/);
+    await expect(page.getByRole("button", { name: "Manage subscription" })).toBeVisible();
+  });
+
+  test("Manage subscription opens the Stripe billing portal", async ({ page, api }) => {
+    await api.json(
+      "**/api/profile",
+      profileFixture({
+        pro: { isPro: true, status: "active", currentPeriodEnd: "2099-01-01T00:00:00.000Z", hasCustomer: true },
+      })
+    );
+    // Stand-in for the billing.stripe.com URL so the redirect stays on-machine.
+    await api.json("**/api/stripe/portal", { url: "/app?from=billing-portal" });
+    await page.goto("/app/settings");
+
+    await page.getByRole("button", { name: "Manage subscription" }).click();
+
+    await expect
+      .poll(() => api.calls("/api/stripe/portal").filter((c) => c.method === "POST").length)
+      .toBe(1);
+    await expect(page).toHaveURL(/\/app\?from=billing-portal$/);
+  });
+
+  test("Sign out ends the session and returns to login", async ({ page }) => {
+    await page.goto("/app/settings");
+
+    // Scoped to the Account section; the sidebar also has an icon-only Sign out.
+    await page.locator("#account").getByRole("button", { name: "Sign out" }).click();
+
+    await expect(page).toHaveURL(/\/login/);
+    await page.goto("/app");
+    await expect(page).toHaveURL(/\/login\?next=%2Fapp$/);
+  });
+
+  test("confirming account deletion deletes the account and signs out", async ({ page, api }) => {
+    await api.json("**/api/account", { ok: true });
+    await page.goto("/app/settings");
+
+    await page.getByRole("button", { name: "Delete account" }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByLabel(/Type DELETE to confirm/i).fill("DELETE");
+    await dialog.getByRole("button", { name: "Delete account" }).click();
+
+    await expect
+      .poll(() => api.calls("/api/account").filter((c) => c.method === "DELETE").length)
+      .toBe(1);
+    await expect(page).toHaveURL(/\/login/);
+  });
+
   test("offers account deletion behind a confirmation", async ({ page }) => {
     await page.goto("/app/settings");
 

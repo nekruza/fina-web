@@ -67,7 +67,7 @@ test.describe("running a conversation", () => {
     await start(page);
 
     await expect(page.getByRole("button", { name: "Get Hint" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Pause" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Type a message" })).toBeVisible();
     await expect(page.getByText(/\d{2}:\d{2}/)).toBeVisible();
   });
 
@@ -104,6 +104,28 @@ test.describe("running a conversation", () => {
     await expect(page.getByText("Fluency")).toBeVisible();
     await expect(page.getByText("Grammar")).toBeVisible();
     await expect(page.getByText(/3\s*days?\s*streak/)).toBeVisible();
+  });
+
+  test("a typed reply is sent to the tutor in place of speech", async ({ page, api }) => {
+    await start(page);
+
+    // Typing is only enabled once the tutor's greeting is done and it's the learner's turn.
+    const typeToggle = page.getByRole("button", { name: "Type a message" });
+    await expect(typeToggle).toBeEnabled({ timeout: 15_000 });
+    await typeToggle.click();
+
+    const input = page.getByRole("textbox", { name: "Type a message" });
+    await input.fill("Quisiera la sopa del día, por favor.");
+    await page.getByRole("button", { name: "Send", exact: true }).click();
+
+    await expect(input).toBeHidden();
+    await expect
+      .poll(() =>
+        api
+          .calls("/api/ai/voice")
+          .filter((c) => (c.body ?? "").includes("Quisiera la sopa del día, por favor.")).length
+      )
+      .toBeGreaterThan(0);
   });
 
   test("still reaches the results page if grading fails", async ({ page, api }) => {
