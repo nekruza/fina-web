@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs/config";
 
 const nextConfig: NextConfig = {
   // Compress responses for faster TTFB
@@ -79,4 +80,16 @@ const nextConfig: NextConfig = {
   // experimental: { optimizeCss: true },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  // Build-time only: uploads source maps so production stack traces are readable.
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  // Without a token (local builds, CI, forks) skip the upload instead of warning.
+  sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },
+  widenClientFileUpload: true,
+  // Send browser events through our own origin so ad blockers don't drop them.
+  // Excluded from the auth middleware matcher in middleware.ts.
+  tunnelRoute: "/monitoring",
+  silent: !process.env.CI,
+});

@@ -327,6 +327,63 @@ describe("fallback to OpenAI", () => {
 		)
 	})
 
+	it("falls back when Gemini reports an error inside the stream", async () => {
+		mockFetch()
+			.mockResolvedValueOnce(
+				sseResponse([`data: ${JSON.stringify({ error: { code: 429 } })}\n`]),
+			)
+			.mockResolvedValueOnce(sseResponse([openAiChunk("Fallback")]))
+
+		await expect(collect(streamLLM(OPTIONS))).resolves.toEqual(["Fallback"])
+	})
+
+	it("falls back when Gemini times out", async () => {
+		const abortError = new Error("aborted")
+		abortError.name = "AbortError"
+		mockFetch()
+			.mockRejectedValueOnce(abortError)
+			.mockResolvedValueOnce(sseResponse([openAiChunk("Fallback")]))
+
+		await expect(collect(streamLLM(OPTIONS))).resolves.toEqual(["Fallback"])
+	})
+
+	it("falls back when Gemini answers 200 with no body", async () => {
+		mockFetch()
+			.mockResolvedValueOnce({ ok: true, status: 200, body: null, text: async () => "" })
+			.mockResolvedValueOnce(sseResponse([openAiChunk("Fallback")]))
+
+		await expect(collect(streamLLM(OPTIONS))).resolves.toEqual(["Fallback"])
+	})
+
+	it("reports 'Unknown error' when the OpenAI error body cannot be read", async () => {
+		mockFetch()
+			.mockResolvedValueOnce(sseResponse([], false, 500))
+			.mockResolvedValueOnce({
+				ok: false,
+				status: 502,
+				body: null,
+				text: () => Promise.reject(new Error("socket closed")),
+			})
+
+		await expect(collect(streamLLM(OPTIONS))).rejects.toThrow(
+			"OpenAI API error: 502 Unknown error",
+		)
+	})
+
+	it("surfaces a non-timeout OpenAI network failure", async () => {
+		mockFetch()
+			.mockResolvedValueOnce(sseResponse([], false, 500))
+			.mockRejectedValueOnce(new Error("ECONNRESET"))
+
+		await expect(collect(streamLLM(OPTIONS))).rejects.toThrow("ECONNRESET")
+	})
+
+	it("ignores non-data lines in the OpenAI stream", async () => {
+		geminiFailsThenOpenAi([": keepalive\n", openAiChunk("Hello")])
+
+		await expect(collect(streamLLM(OPTIONS))).resolves.toEqual(["Hello"])
+	})
+
 	it("reports a timeout distinctly when the OpenAI request aborts", async () => {
 		const abortError = new Error("aborted")
 		abortError.name = "AbortError"
