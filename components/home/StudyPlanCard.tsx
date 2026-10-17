@@ -5,19 +5,15 @@ import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Mic, BookOpen } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 import { markStudyPlanDayComplete } from "@/lib/db/profile";
 import { QUERY_KEYS } from "@/lib/queries/keys";
 import { currentPlanDay, displayDay as computeDisplayDay } from "@/lib/study-plan";
 import { getSectionDone, markSectionDone } from "@/lib/study-plan-storage";
-import { STUDY_PLAN_30 } from "@/lib/data/studyPlan";
-import { getLessonForPlanTopic } from "@/lib/data/predefinedLessons";
-import type { LanguageId } from "@/lib/languages";
+import { STUDY_PLAN_30, VOCAB_TOPIC_LESSON_IDS } from "@/lib/data/studyPlan";
 import type { TutorId } from "@/lib/tutors";
 
 export interface StudyPlanCardProps {
   userId: string;
-  targetLanguage: LanguageId;
   tutorId: TutorId;
   studyPlanStartDate: string | null;
   /** Days for which BOTH sections are complete, from the server (`profile.studyPlan.completedDays`). */
@@ -31,7 +27,7 @@ export interface StudyPlanCardProps {
  * persists the day as complete on the server and advances the displayed
  * day. Footer mirrors the mobile week-progress strip and "View all" link.
  */
-export function StudyPlanCard({ userId, targetLanguage, tutorId, studyPlanStartDate, completedDays }: StudyPlanCardProps) {
+export function StudyPlanCard({ userId, tutorId, studyPlanStartDate, completedDays }: StudyPlanCardProps) {
   const queryClient = useQueryClient();
   const [speakDone, setSpeakDone] = useState<Set<number>>(new Set());
   const [vocabDone, setVocabDone] = useState<Set<number>>(new Set());
@@ -54,11 +50,13 @@ export function StudyPlanCard({ userId, targetLanguage, tutorId, studyPlanStartD
   const speakForDay = speakDone.has(displayDayNumber);
   const vocabForDay = vocabDone.has(displayDayNumber);
   const bothDone = speakForDay && vocabForDay;
-  const lesson = getLessonForPlanTopic(today.vocabTopic, targetLanguage);
+  const lessonId = VOCAB_TOPIC_LESSON_IDS[today.vocabTopic];
 
   function completeDayIfBothDone(day: number, speak: Set<number>, vocab: Set<number>) {
     if (speak.has(day) && vocab.has(day)) {
-      markStudyPlanDayComplete(createClient(), userId, day)
+      // supabase-js is loaded on demand to keep it out of the home page's first-load JS.
+      import("@/lib/supabase/client")
+        .then(({ createClient }) => markStudyPlanDayComplete(createClient(), userId, day))
         .then(() => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.profile }))
         .catch((error) => {
           // The local speak/vocab ticks stay set either way, so the next
@@ -130,7 +128,7 @@ export function StudyPlanCard({ userId, targetLanguage, tutorId, studyPlanStartD
         </Link>
 
         <Link
-          href={lesson ? `/app/vocabulary/lessons/${lesson.id}` : "/app/vocabulary/lessons"}
+          href={lessonId ? `/app/vocabulary/lessons/${lessonId}` : "/app/vocabulary/lessons"}
           onClick={handleVocabClick}
           aria-label={`Learn vocabulary: ${today.vocabTopic}`}
           className="flex items-center gap-3 rounded-2xl bg-hot/10 px-4 py-3 transition hover:brightness-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"

@@ -39,7 +39,6 @@ describe("StudyPlanCard", () => {
     render(
       <StudyPlanCard
         userId="user-1"
-        targetLanguage="english"
         tutorId="luna"
         studyPlanStartDate={START_DATE}
         completedDays={[]}
@@ -60,7 +59,6 @@ describe("StudyPlanCard", () => {
     render(
       <StudyPlanCard
         userId="user-1"
-        targetLanguage="english"
         tutorId="luna"
         studyPlanStartDate={START_DATE}
         completedDays={[]}

@@ -65,3 +65,22 @@ export const STUDY_PLAN_30: StudyDay[] = [
   { day: 29, speakLabel: 'Networking Event',         roleplayId: 'work-networking-1',   vocabTopic: 'Technology' },
   { day: 30, speakLabel: 'General Conversation',     roleplayId: 'general',             vocabTopic: 'Daily Life' },
 ];
+
+/**
+ * Lesson id for each plan vocab topic. Every language file gives a topic the
+ * same id, so the home screen can deep-link to a lesson without loading the
+ * per-language lesson data (~70 KB gzipped) into its bundle. Kept in sync with
+ * data/lessons/*.ts by the content-integrity test.
+ */
+export const VOCAB_TOPIC_LESSON_IDS: Record<string, number> = {
+  'Daily Life': 1,
+  'Food & Cooking': 2,
+  'Travel': 3,
+  'Work & Business': 4,
+  'Technology': 5,
+  'Health & Fitness': 6,
+  'Shopping & Money': 7,
+  'Weather & Nature': 8,
+  'Entertainment': 9,
+  'Emotions': 10,
+};

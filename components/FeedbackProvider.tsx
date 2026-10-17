@@ -2,7 +2,6 @@
 
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { CheckCircle } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 
 /**
  * App-wide feedback dialog. Moved out of `AppSidebar` so the home screen's
@@ -52,6 +51,8 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
     if (!feedbackMessage.trim()) return;
     setFeedbackSubmitting(true);
     try {
+      // Loaded on demand so supabase-js stays out of the app shell's first-load JS.
+      const { createClient } = await import("@/lib/supabase/client");
       const supabase = createClient();
       const {
         data: { user },

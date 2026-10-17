@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
+import { frauncesSoft } from "@/lib/marketing-font";
 
 function slugify(text: string): string {
   return text
@@ -23,7 +24,8 @@ export function LegalDocument({
   children: ReactNode;
 }) {
   return (
-    <>
+    // `contents` keeps this wrapper out of layout; it only scopes the SOFT font variable.
+    <div className={`contents ${frauncesSoft.variable}`}>
       <Navigation />
       <main id="main-content" className="bg-cream px-4 pb-24 pt-32 sm:px-6 md:pt-40">
         <article className="mx-auto max-w-[68ch] text-ink">
@@ -39,7 +41,7 @@ export function LegalDocument({
         </article>
       </main>
       <Footer />
-    </>
+    </div>
   );
 }
 

@@ -321,8 +321,9 @@ html {
 
 /* ── Marketing pages (landing, privacy, terms) ── */
 
-/* Fraunces' softer cut for display type; opsz + SOFT axes are loaded in app/layout.tsx. */
+/* Fraunces' softer cut for display type; the opsz + SOFT font is loaded by lib/marketing-font.ts. */
 .fina-display {
+  font-family: var(--font-fraunces-soft, var(--font-fraunces));
   font-optical-sizing: auto;
   font-variation-settings: "SOFT" 50;
 }

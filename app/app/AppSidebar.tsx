@@ -4,7 +4,6 @@ import { FC } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { useFeedbackDialog } from "@/components/FeedbackProvider";
 import {
   Home,
@@ -60,8 +59,9 @@ export const AppSidebar: FC<AppSidebarProps> = ({ userEmail, avatarUrl }) => {
   const feedbackDialog = useFeedbackDialog();
 
   async function handleSignOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
+    // Loaded on demand so supabase-js stays out of the app shell's first-load JS.
+    const { createClient } = await import("@/lib/supabase/client");
+    await createClient().auth.signOut();
     router.push("/");
     router.refresh();
   }

@@ -9,8 +9,9 @@ const fraunces = Fraunces({
   subsets: ["latin"],
   variable: "--font-fraunces",
   display: "swap",
-  // Optical sizing for large display type, and the SOFT axis used by .fina-display.
-  axes: ["opsz", "SOFT"],
+  // Optical sizing for large display type. The marketing pages' SOFT cut is
+  // loaded separately (lib/marketing-font.ts) so the app doesn't pay for it.
+  axes: ["opsz"],
 });
 
 const manrope = Manrope({
@@ -87,9 +88,9 @@ export const metadata: Metadata = {
     },
   },
   icons: {
-    icon: "/logo.png",
-    shortcut: "/logo.png",
-    apple: "/logo.png",
+    icon: "/logo-192.png",
+    shortcut: "/logo-192.png",
+    apple: "/logo-192.png",
   },
   alternates: {
     canonical: SITE_URL,

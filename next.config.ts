@@ -91,5 +91,7 @@ export default withSentryConfig(nextConfig, {
   // Send browser events through our own origin so ad blockers don't drop them.
   // Excluded from the auth middleware matcher in middleware.ts.
   tunnelRoute: "/monitoring",
+  // Strip the SDK's internal logger from the browser bundle.
+  bundleSizeOptimizations: { excludeDebugStatements: true },
   silent: !process.env.CI,
 });

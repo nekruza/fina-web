@@ -2,17 +2,23 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { ArrowRight, BookOpen, CalendarDays, MessageSquare, Mic, Sparkles, TrendingUp } from "lucide-react";
 import { useProfile, useUpdateProfile } from "@/lib/queries/profile";
 import { LanguageLevelSwitcher } from "@/components/home/LanguageLevelSwitcher";
 import { StreakCard } from "@/components/home/StreakCard";
 import { StudyPlanCard } from "@/components/home/StudyPlanCard";
 import { TutorWelcomeCard } from "@/components/home/TutorWelcomeCard";
-import { ProUpgradeDialog } from "@/components/ProUpgradeDialog";
 import { useFeedbackDialog } from "@/components/FeedbackProvider";
 import { DEFAULT_TUTOR_ID, isTutorId } from "@/lib/tutors";
 import { isLanguageId, type LanguageId } from "@/lib/languages";
 import { isUserLevel, type UserLevel } from "@/lib/levels";
+
+// The dialog pulls in Radix Dialog and the billing plans, which the home page
+// only needs once someone clicks "Upgrade to Pro".
+const ProUpgradeDialog = dynamic(() => import("@/components/ProUpgradeDialog").then((m) => m.ProUpgradeDialog), {
+  ssr: false,
+});
 
 const EMPTY_WEEK: boolean[] = [false, false, false, false, false, false, false];
 
@@ -34,6 +40,8 @@ export function HomeClient() {
   const feedbackDialog = useFeedbackDialog();
   const [greeting, setGreeting] = useState<string | null>(null);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  // Stays true after the first open so the dialog can animate closed.
+  const [upgradeRequested, setUpgradeRequested] = useState(false);
 
   useEffect(() => {
     async function computeGreeting() {
@@ -83,7 +91,10 @@ export function HomeClient() {
               ) : (
                 <button
                   type="button"
-                  onClick={() => setUpgradeOpen(true)}
+                  onClick={() => {
+                    setUpgradeRequested(true);
+                    setUpgradeOpen(true);
+                  }}
                   className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-accent-brand px-3 text-xs font-semibold text-white transition-[background-color,transform] hover:bg-accent-brand/90 active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"
                 >
                   <Sparkles className="h-3 w-3" aria-hidden />
@@ -114,7 +125,6 @@ export function HomeClient() {
           {profile && (
             <StudyPlanCard
               userId={profile.id}
-              targetLanguage={language}
               tutorId={tutorId}
               studyPlanStartDate={profile.studyPlan.startDate}
               completedDays={profile.studyPlan.completedDays}
@@ -211,7 +221,9 @@ export function HomeClient() {
         </button>
       </section>
 
-      <ProUpgradeDialog open={upgradeOpen} onClose={() => setUpgradeOpen(false)} reason="upgrade" />
+      {upgradeRequested && (
+        <ProUpgradeDialog open={upgradeOpen} onClose={() => setUpgradeOpen(false)} reason="upgrade" />
+      )}
     </div>
   );
 }
