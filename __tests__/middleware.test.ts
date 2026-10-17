@@ -38,4 +38,10 @@ describe("matcher config", () => {
     expect(catchAll).toContain("icon.png");
     expect(catchAll).toContain("mp4");
   });
+
+  it("skips the Sentry tunnel route", () => {
+    const catchAll = config.matcher.find((m) => m.includes("?!"));
+
+    expect(catchAll).toContain("?!monitoring|");
+  });
 });
