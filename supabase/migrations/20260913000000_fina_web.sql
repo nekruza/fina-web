@@ -60,6 +60,9 @@ begin
 end;
 $$;
 
+-- Trigger-only: nobody should be able to call it through /rest/v1/rpc.
+revoke all on function public.protect_profile_billing_columns() from public, anon, authenticated;
+
 drop trigger if exists protect_profile_billing_columns on public.profiles;
 create trigger protect_profile_billing_columns
   before insert or update on public.profiles

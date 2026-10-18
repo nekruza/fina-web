@@ -11,6 +11,7 @@ import { LANGUAGES, type LanguageId } from "@/lib/languages";
 import { USER_LEVELS, type UserLevel } from "@/lib/levels";
 import { TutorPicker } from "@/components/roleplay/TutorPicker";
 import { AiPrivacySection } from "@/components/settings/AiPrivacySection";
+import { VoucherRedeemForm } from "@/components/settings/VoucherRedeemForm";
 import type { TutorId } from "@/lib/tutors";
 import { isBillingPlan, type BillingPlan } from "@/lib/billing";
 import { saveUserPreferences } from "@/lib/user-preferences";
@@ -392,7 +393,11 @@ export default function SettingsPage() {
             {profile.pro.isPro ? (
               <p className="text-sm text-ink">
                 <span className="font-semibold">Fina Pro</span> ·{" "}
-                {profile.pro.currentPeriodEnd ? `renews ${formatDate(profile.pro.currentPeriodEnd)}` : "active"}
+                {!profile.pro.currentPeriodEnd
+                  ? "active"
+                  : profile.pro.hasSubscription
+                    ? `renews ${formatDate(profile.pro.currentPeriodEnd)}`
+                    : `free until ${formatDate(profile.pro.currentPeriodEnd)}`}
               </p>
             ) : (
               <p className="text-sm text-ink">
@@ -401,7 +406,8 @@ export default function SettingsPage() {
               </p>
             )}
 
-            {profile.pro.isPro ? (
+            {/* Pro from a voucher has no Stripe subscription, so nothing to manage. */}
+            {profile.pro.isPro && profile.pro.hasSubscription && (
               <button
                 type="button"
                 onClick={handleManageSubscription}
@@ -411,7 +417,8 @@ export default function SettingsPage() {
                 {openingPortal && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
                 Manage subscription
               </button>
-            ) : (
+            )}
+            {!profile.pro.isPro && (
               <button
                 type="button"
                 onClick={() => {
@@ -424,6 +431,7 @@ export default function SettingsPage() {
               </button>
             )}
           </div>
+          {!profile.pro.isPro && <VoucherRedeemForm onRedeemed={() => void refetch()} />}
         </section>
 
         <section id="account" className="scroll-mt-24 rounded-2xl border border-line bg-surface p-6 sm:p-8">

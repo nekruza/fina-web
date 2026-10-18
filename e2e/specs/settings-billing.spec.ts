@@ -76,7 +76,7 @@ test.describe("settings", () => {
     await api.json(
       "**/api/profile",
       profileFixture({
-        pro: { isPro: true, status: "active", currentPeriodEnd: "2099-01-01T00:00:00.000Z", hasCustomer: true },
+        pro: { isPro: true, status: "active", currentPeriodEnd: "2099-01-01T00:00:00.000Z", hasCustomer: true, hasSubscription: true },
       })
     );
     await page.goto("/app/settings");
@@ -94,7 +94,7 @@ test.describe("settings", () => {
     await api.json(
       "**/api/profile",
       profileFixture({
-        pro: { isPro: true, status: "active", currentPeriodEnd: "2099-01-01T00:00:00.000Z", hasCustomer: true },
+        pro: { isPro: true, status: "active", currentPeriodEnd: "2099-01-01T00:00:00.000Z", hasCustomer: true, hasSubscription: true },
       })
     );
     await page.goto("/app/settings?upgraded=1");
@@ -108,7 +108,7 @@ test.describe("settings", () => {
     await api.json(
       "**/api/profile",
       profileFixture({
-        pro: { isPro: true, status: "active", currentPeriodEnd: "2099-01-01T00:00:00.000Z", hasCustomer: true },
+        pro: { isPro: true, status: "active", currentPeriodEnd: "2099-01-01T00:00:00.000Z", hasCustomer: true, hasSubscription: true },
       })
     );
     // Stand-in for the billing.stripe.com URL so the redirect stays on-machine.

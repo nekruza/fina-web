@@ -57,7 +57,7 @@ function profile(overrides: Partial<ProfileSummary> = {}): ProfileSummary {
     streak: { current: 0, lastConversationDate: null, weeklyActivity: [] },
     studyPlan: { startDate: null, completedDays: [] },
     stats: { conversationsCompleted: 0, avgOverallScore: null, lessonsCompleted: 0, favoriteWords: 0, generatedLessons: 0 },
-    pro: { isPro: false, status: null, currentPeriodEnd: null, hasCustomer: false },
+    pro: { isPro: false, status: null, currentPeriodEnd: null, hasCustomer: false, hasSubscription: false },
     usage: { freeConversationsRemaining: 2, freeGenerationsRemaining: 1 },
     createdAt: "2026-01-01T00:00:00.000Z",
     ...overrides,
@@ -134,18 +134,75 @@ describe("rendering", () => {
   });
 
   it("shows the renewal date and manage-subscription action for a Pro account", () => {
-    setup({ pro: { isPro: true, status: "active", currentPeriodEnd: "2027-03-15T00:00:00.000Z", hasCustomer: true } });
+    setup({ pro: { isPro: true, status: "active", currentPeriodEnd: "2027-03-15T00:00:00.000Z", hasCustomer: true, hasSubscription: true } });
     render(<SettingsPage />);
 
     expect(screen.getByText(/renews Mar 15, 2027/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Manage subscription" })).toBeInTheDocument();
   });
 
+  it("shows voucher Pro as free until its end date, with nothing to manage", () => {
+    setup({ pro: { isPro: true, status: "active", currentPeriodEnd: "2027-10-18T00:00:00.000Z", hasCustomer: false, hasSubscription: false } });
+    render(<SettingsPage />);
+
+    expect(screen.getByText(/free until Oct 18, 2027/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Manage subscription" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Upgrade to Pro" })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Have a voucher code?")).not.toBeInTheDocument();
+  });
+
   it("shows 'active' when a Pro account has no known period end", () => {
-    setup({ pro: { isPro: true, status: "active", currentPeriodEnd: null, hasCustomer: true } });
+    setup({ pro: { isPro: true, status: "active", currentPeriodEnd: null, hasCustomer: true, hasSubscription: true } });
     render(<SettingsPage />);
 
     expect(screen.getByText(/active/)).toBeInTheDocument();
+  });
+});
+
+describe("voucher codes", () => {
+  it("offers the redeem form to a free account only", () => {
+    setup();
+    render(<SettingsPage />);
+
+    expect(screen.getByLabelText("Have a voucher code?")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Redeem" })).toBeDisabled();
+  });
+
+  it("redeems a code and refetches the profile", async () => {
+    setup();
+    const refetch = jest.fn();
+    useProfile.mockReturnValue({ data: profile(), isLoading: false, refetch });
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({ status: "ok", proUntil: "2027-10-18T00:00:00.000Z" }),
+    });
+    render(<SettingsPage />);
+
+    fireEvent.change(screen.getByLabelText("Have a voucher code?"), { target: { value: "fina-2026" } });
+    fireEvent.click(screen.getByRole("button", { name: "Redeem" }));
+
+    await waitFor(() => expect(refetch).toHaveBeenCalled());
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/vouchers/redeem",
+      expect.objectContaining({ method: "POST", body: JSON.stringify({ code: "fina-2026" }) })
+    );
+    expect(toast.success).toHaveBeenCalledWith("Code redeemed — welcome to Fina Pro!");
+    expect(screen.getByLabelText("Have a voucher code?")).toHaveValue("");
+  });
+
+  it("shows the server's reason when a code is rejected", async () => {
+    setup();
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: false,
+      json: async () => ({ error: "That code has expired.", status: "expired" }),
+    });
+    render(<SettingsPage />);
+
+    fireEvent.change(screen.getByLabelText("Have a voucher code?"), { target: { value: "OLD-CODE" } });
+    fireEvent.click(screen.getByRole("button", { name: "Redeem" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("That code has expired.");
+    expect(screen.getByLabelText("Have a voucher code?")).toHaveAttribute("aria-invalid", "true");
   });
 });
 
@@ -205,14 +262,14 @@ describe("saving profile and learning fields", () => {
 
 describe("upgrade dialog preselection", () => {
   it("opens the upgrade dialog when ?plan= is present for a free user", () => {
-    setup({ pro: { isPro: false, status: null, currentPeriodEnd: null, hasCustomer: false } }, "plan=monthly");
+    setup({ pro: { isPro: false, status: null, currentPeriodEnd: null, hasCustomer: false, hasSubscription: false } }, "plan=monthly");
     render(<SettingsPage />);
 
     expect(screen.getByTestId("upgrade-dialog")).toBeInTheDocument();
   });
 
   it("does not open the upgrade dialog for a Pro user even with ?plan=", () => {
-    setup({ pro: { isPro: true, status: "active", currentPeriodEnd: null, hasCustomer: true } }, "plan=monthly");
+    setup({ pro: { isPro: true, status: "active", currentPeriodEnd: null, hasCustomer: true, hasSubscription: true } }, "plan=monthly");
     render(<SettingsPage />);
 
     expect(screen.queryByTestId("upgrade-dialog")).not.toBeInTheDocument();
@@ -232,7 +289,7 @@ describe("?upgraded=1 handling", () => {
     useRouter.mockReturnValue({ push, replace, refresh });
     useSearchParams.mockReturnValue(new URLSearchParams("upgraded=1"));
     useProfile.mockReturnValue({
-      data: profile({ pro: { isPro: false, status: null, currentPeriodEnd: null, hasCustomer: false } }),
+      data: profile({ pro: { isPro: false, status: null, currentPeriodEnd: null, hasCustomer: false, hasSubscription: false } }),
       isLoading: false,
       refetch,
     });
@@ -243,10 +300,10 @@ describe("?upgraded=1 handling", () => {
     const refetch = jest
       .fn()
       .mockResolvedValueOnce({
-        data: profile({ pro: { isPro: false, status: null, currentPeriodEnd: null, hasCustomer: false } }),
+        data: profile({ pro: { isPro: false, status: null, currentPeriodEnd: null, hasCustomer: false, hasSubscription: false } }),
       })
       .mockResolvedValueOnce({
-        data: profile({ pro: { isPro: true, status: "active", currentPeriodEnd: null, hasCustomer: true } }),
+        data: profile({ pro: { isPro: true, status: "active", currentPeriodEnd: null, hasCustomer: true, hasSubscription: true } }),
       });
     setupUpgraded(refetch);
 
@@ -269,7 +326,7 @@ describe("?upgraded=1 handling", () => {
 
   it("shows a processing toast and removes the param after 5 polls with no Pro yet", async () => {
     const refetch = jest.fn().mockResolvedValue({
-      data: profile({ pro: { isPro: false, status: null, currentPeriodEnd: null, hasCustomer: false } }),
+      data: profile({ pro: { isPro: false, status: null, currentPeriodEnd: null, hasCustomer: false, hasSubscription: false } }),
     });
     setupUpgraded(refetch);
 
