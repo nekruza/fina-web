@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/require-user";
 import { streamLLM } from "@/lib/llm";
 import { buildConversationInstructions, buildHintPrompt } from "@/lib/utils/buildConversationInstructions";
 import { isLanguageId, type LanguageId } from "@/lib/languages";
@@ -64,17 +64,8 @@ function buildHintTranscript(messages: ConversationMessage[]): string {
 }
 
 export async function POST(req: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
+  const { supabase, user, response } = await requireUser();
+  if (!user) return response;
 
   const { messages: rawMessages, language, level, tutorId, roleplay, isHint, sessionId } = await req.json();
 

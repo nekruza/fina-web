@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import Image from "next/image";
-import { LANGUAGES } from "@/lib/languages";
 import { TUTORS } from "@/lib/tutors";
 import { roleplays } from "@/lib/data/roleplays";
 import { sectionHeading, shell } from "./styles";

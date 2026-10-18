@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/require-user";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripe } from "@/lib/stripe";
 
@@ -16,14 +16,8 @@ const TABLES_TO_DELETE = [
 const BILLING_PRO_STATUSES = new Set(["active", "trialing", "past_due"]);
 
 export async function DELETE() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { supabase, user, response } = await requireUser();
+  if (!user) return response;
 
   const { data: profile } = await supabase
     .from("profiles")

@@ -14,6 +14,15 @@ export interface Message {
 
 export type Phase = "setup" | "chat" | "complete";
 
+/** Turn-taking state of a live voice call. */
+export type ConversationState =
+  | "initializing"
+  | "ai_speaking"
+  | "listening"
+  | "processing"
+  | "paused"
+  | "ending";
+
 export interface Correction {
   original: string;
   corrected: string;

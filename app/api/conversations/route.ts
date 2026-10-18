@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/require-user";
 import { getProfileRow, updateStreak } from "@/lib/db/profile";
 import { createConversation, completeConversation, listConversations, countConversations } from "@/lib/db/conversations";
 import { isLanguageId } from "@/lib/languages";
@@ -54,14 +54,8 @@ function sanitizeAnalysis(input: unknown): LanguageAnalysis | null {
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { supabase, user, response } = await requireUser();
+  if (!user) return response;
 
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   const { roleplayId, roleplayTitle, tutorId, language, level } = body ?? {};
@@ -89,14 +83,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { supabase, user, response } = await requireUser();
+  if (!user) return response;
 
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   const { sessionId, durationSeconds, analysis, messageCount, localDate, dayOfWeek } = body ?? {};
@@ -149,14 +137,8 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { supabase, user, response } = await requireUser();
+  if (!user) return response;
 
   const { searchParams } = new URL(req.url);
   const rawLimit = parseInt(searchParams.get("limit") ?? "20", 10);

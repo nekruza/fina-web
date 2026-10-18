@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/require-user";
 import { updateProfile, ensureStudyPlanStartDate } from "@/lib/db/profile";
 import { isLanguageId } from "@/lib/languages";
 import { isTutorId } from "@/lib/tutors";
@@ -23,14 +23,8 @@ const PROFILE_MOTIVATIONS = new Map([
 ]);
 
 export async function POST(req: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { supabase, user, response } = await requireUser();
+  if (!user) return response;
 
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
 

@@ -1,7 +1,7 @@
 name: CI
 
-# Every pull request runs the Jest suite (failing below the 90% coverage floor
-# set in jest.config.js) and the Playwright suite. Pushes to main re-run both
+# Every pull request runs lint, typecheck, the Jest suite (failing below the
+# 90% coverage floor set in jest.config.js) and the Playwright suite. Pushes to main re-run both
 # so the branch the deploy comes from stays verified.
 on:
   pull_request:
@@ -32,6 +32,12 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
 
       # jest --ci --coverage --runInBand: exits non-zero if any test fails or
       # any global metric drops below its coverageThreshold.

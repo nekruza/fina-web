@@ -34,6 +34,8 @@ interface SpeechRecognition extends EventTarget {
   onstart: (() => void) | null;
 }
 
+// Ambient globals must be declared with `var`.
+/* eslint-disable no-var */
 declare var SpeechRecognition: {
   new (): SpeechRecognition;
 };

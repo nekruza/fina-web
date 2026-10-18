@@ -1,18 +1,12 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/require-user";
 import { getProfileRow } from "@/lib/db/profile";
 import { countConversations } from "@/lib/db/conversations";
 import { hasProAccess, FREE_CONVERSATIONS } from "@/lib/billing";
 
 export async function GET() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { supabase, user, response } = await requireUser();
+  if (!user) return response;
 
   const [row, freeUsed] = await Promise.all([getProfileRow(supabase, user.id), countConversations(supabase, user.id)]);
 

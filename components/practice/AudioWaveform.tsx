@@ -29,11 +29,7 @@ export const AudioWaveform: FC<AudioWaveformProps> = ({
   useEffect(() => {
     if (variant !== "ai") return;
 
-    if (!isActive) {
-      setAiBars(Array.from({ length: barCount }, () => 4));
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      return;
-    }
+    if (!isActive) return;
 
     // Each bar has its own speed so they feel independent
     const speeds = Array.from(
@@ -65,7 +61,9 @@ export const AudioWaveform: FC<AudioWaveformProps> = ({
           const val = analyserData[i * step] ?? 0;
           return isActive ? Math.max(4, (val / 255) * 32) : 4;
         })
-      : aiBars;
+      : isActive
+        ? aiBars
+        : Array.from({ length: barCount }, () => 4); // resting bars between AI turns
 
   return (
     <div className={`flex items-center justify-center gap-[3px] ${className}`}>
