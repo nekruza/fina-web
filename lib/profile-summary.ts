@@ -84,6 +84,7 @@ export function buildProfileSummary(input: BuildProfileSummaryInput): ProfileSum
       status: row?.pro_status ?? null,
       currentPeriodEnd: row?.pro_current_period_end ?? null,
       hasCustomer: Boolean(row?.stripe_customer_id),
+      hasSubscription: Boolean(row?.stripe_subscription_id),
     },
     usage: { freeConversationsRemaining, freeGenerationsRemaining },
     createdAt: row?.created_at ?? now.toISOString(),

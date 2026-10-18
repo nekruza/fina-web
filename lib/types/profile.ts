@@ -58,7 +58,17 @@ export interface ProfileSummary {
     favoriteWords: number;
     generatedLessons: number;
   };
-  pro: { isPro: boolean; status: string | null; currentPeriodEnd: string | null; hasCustomer: boolean };
+  /**
+   * `hasSubscription` is false for Pro granted without Stripe (a voucher
+   * code, or set by hand), which has no billing portal and doesn't renew.
+   */
+  pro: {
+    isPro: boolean;
+    status: string | null;
+    currentPeriodEnd: string | null;
+    hasCustomer: boolean;
+    hasSubscription: boolean;
+  };
   usage: { freeConversationsRemaining: number; freeGenerationsRemaining: number };
   createdAt: string;
 }

@@ -41,7 +41,7 @@ export function profileFixture(overrides: Partial<ProfileSummary> = {}): Profile
       favoriteWords: 1,
       generatedLessons: 0,
     },
-    pro: { isPro: false, status: null, currentPeriodEnd: null, hasCustomer: false },
+    pro: { isPro: false, status: null, currentPeriodEnd: null, hasCustomer: false, hasSubscription: false },
     usage: { freeConversationsRemaining: 3, freeGenerationsRemaining: 3 },
     createdAt: "2026-01-01T00:00:00.000Z",
     ...overrides,

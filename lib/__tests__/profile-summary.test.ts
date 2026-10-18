@@ -67,10 +67,17 @@ describe("buildProfileSummary", () => {
       },
       studyPlan: { startDate: "2026-09-01T00:00:00.000Z", completedDays: [1, 2] },
       stats: { conversationsCompleted: 5, avgOverallScore: 80, lessonsCompleted: 3, favoriteWords: 7, generatedLessons: 2 },
-      pro: { isPro: true, status: "active", currentPeriodEnd: "2026-10-01T00:00:00.000Z", hasCustomer: true },
+      pro: { isPro: true, status: "active", currentPeriodEnd: "2026-10-01T00:00:00.000Z", hasCustomer: true, hasSubscription: true },
       usage: { freeConversationsRemaining: 999, freeGenerationsRemaining: 999 },
       createdAt: "2026-08-01T00:00:00.000Z",
     });
+  });
+
+  it("marks voucher-granted Pro as having no Stripe subscription", () => {
+    const summary = buildProfileSummary(
+      baseInput({ row: { ...ROW, stripe_subscription_id: null, pro_current_period_end: "2027-09-13T00:00:00.000Z" } })
+    );
+    expect(summary.pro).toMatchObject({ isPro: true, hasCustomer: true, hasSubscription: false });
   });
 
   describe("displayName fallback chain", () => {
@@ -105,7 +112,7 @@ describe("buildProfileSummary", () => {
     it("defaults level to beginner", () => expect(summary.level).toBe("beginner"));
     it("defaults dailyGoalMinutes to 10", () => expect(summary.dailyGoalMinutes).toBe(10));
     it("is not onboarded", () => expect(summary.onboarded).toBe(false));
-    it("is not pro and has no customer", () => expect(summary.pro).toEqual({ isPro: false, status: null, currentPeriodEnd: null, hasCustomer: false }));
+    it("is not pro and has no customer", () => expect(summary.pro).toEqual({ isPro: false, status: null, currentPeriodEnd: null, hasCustomer: false, hasSubscription: false }));
     it("streak/study plan default to empty", () => {
       expect(summary.streak).toEqual({ current: 0, lastConversationDate: null, weeklyActivity: [false, false, false, false, false, false, false] });
       expect(summary.studyPlan).toEqual({ startDate: null, completedDays: [] });

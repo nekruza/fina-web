@@ -22,7 +22,7 @@ const mockProfile: ProfileSummary = {
   streak: { current: 2, lastConversationDate: "2026-01-01", weeklyActivity: [false, false, false, false, false, false, false] },
   studyPlan: { startDate: null, completedDays: [] },
   stats: { conversationsCompleted: 5, avgOverallScore: 80, lessonsCompleted: 3, favoriteWords: 4, generatedLessons: 1 },
-  pro: { isPro: false, status: null, currentPeriodEnd: null, hasCustomer: false },
+  pro: { isPro: false, status: null, currentPeriodEnd: null, hasCustomer: false, hasSubscription: false },
   usage: { freeConversationsRemaining: 1, freeGenerationsRemaining: 2 },
   createdAt: "2026-01-01T00:00:00Z",
 };
