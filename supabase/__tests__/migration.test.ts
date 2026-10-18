@@ -27,6 +27,12 @@ describe("profiles billing-column protection (C1)", () => {
     );
   });
 
+  it("can't be called directly through the REST API", () => {
+    expect(normalized).toContain(
+      "revoke all on function public.protect_profile_billing_columns() from public, anon, authenticated"
+    );
+  });
+
   it("treats the service role and the dashboard/SQL-editor roles as privileged", () => {
     expect(normalized).toContain("coalesce(auth.role(), '') = 'service_role'");
     expect(normalized).toMatch(/session_user in \('postgres', 'supabase_admin', 'service_role'\)/);
