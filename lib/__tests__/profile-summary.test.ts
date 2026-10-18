@@ -204,6 +204,7 @@ describe("buildProfileSummary", () => {
       lessonsCompleted: 0,
       favoriteWords: 0,
       generatedLessons: 0,
+      generationEvents: 0,
     });
     expect(new Date(summary.createdAt).getTime()).toBeGreaterThan(0);
   });

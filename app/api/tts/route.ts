@@ -1,7 +1,7 @@
 // TTS proxy — primary: Inworld TTS 1.5 Mini, fallback: Chutes AI Kokoro.
 // Returns 503 on failure so the client can fall back to Web SpeechSynthesis.
 
-import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/require-user";
 import { isLanguageId, pronunciationVoice } from "@/lib/languages";
 
 export const runtime = "nodejs";
@@ -11,17 +11,8 @@ const MAX_TEXT_LENGTH = 600;
 export async function POST(req: Request) {
   // Synthesis is billed per request, so signed-in users only. Every caller
   // (pronunciation playback, the tutor voice fallback) lives inside /app.
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
+  const { user, response } = await requireUser();
+  if (!user) return response;
 
   let text: string;
   let voiceId: string | undefined;

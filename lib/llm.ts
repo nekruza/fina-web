@@ -1,6 +1,8 @@
 // Server-only LLM provider helper.
 // Default: Google Gemini 2.5 Flash Lite with automatic fallback to OpenAI GPT-4.1 mini on error.
 
+import { sseData } from "@/lib/sse"
+
 export interface LLMMessage {
 	role: string
 	content: string
@@ -20,7 +22,7 @@ export async function* streamLLM(
 ): AsyncGenerator<string> {
 	try {
 		yield* streamGemini(opts)
-	} catch (err) {
+	} catch {
 		yield* streamOpenAI(opts)
 	}
 }
@@ -64,30 +66,15 @@ async function* streamOpenAI(opts: StreamLLMOptions): AsyncGenerator<string> {
 		throw new Error(`OpenAI API error: ${res.status} ${err}`)
 	}
 
-	const reader = res.body.getReader()
-	const decoder = new TextDecoder()
-	let buffer = ""
+	for await (const payload of sseData(res.body)) {
+		if (payload === "[DONE]") return
 
-	while (true) {
-		const { done, value } = await reader.read()
-		if (done) break
-
-		buffer += decoder.decode(value, { stream: true })
-		const lines = buffer.split("\n")
-		buffer = lines.pop() ?? ""
-
-		for (const line of lines) {
-			if (!line.startsWith("data: ")) continue
-			const payload = line.slice(6).trim()
-			if (payload === "[DONE]") return
-
-			try {
-				const parsed = JSON.parse(payload)
-				const content = parsed.choices?.[0]?.delta?.content
-				if (content) yield content
-			} catch {
-				// skip malformed chunks
-			}
+		try {
+			const parsed = JSON.parse(payload)
+			const content = parsed.choices?.[0]?.delta?.content
+			if (content) yield content
+		} catch {
+			// skip malformed chunks
 		}
 	}
 }
@@ -144,40 +131,20 @@ async function* streamGemini(opts: StreamLLMOptions): AsyncGenerator<string> {
 		throw new Error(`Gemini API error: ${res.status} ${err}`)
 	}
 
-	const reader = res.body.getReader()
-	const decoder = new TextDecoder()
-	let buffer = ""
+	for await (const payload of sseData(res.body)) {
+		if (!payload) continue
 
-	while (true) {
-		const { done, value } = await reader.read()
-		if (done) break
-
-		buffer += decoder.decode(value, { stream: true })
-		const lines = buffer.split("\n")
-		buffer = lines.pop() ?? ""
-
-		for (const line of lines) {
-			if (!line.startsWith("data: ")) continue
-			const payload = line.slice(6).trim()
-			if (!payload) continue
-
-			try {
-				const parsed = JSON.parse(payload)
-				const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text
-				if (text) {
-					yield text
-				} else if (parsed.error) {
-					throw new Error(
-						`Gemini stream error: ${JSON.stringify(parsed.error)}`,
-					)
-				}
-			} catch (e) {
-				if (e instanceof SyntaxError) {
-					// skip malformed chunks
-				} else {
-					throw e
-				}
-			}
+		let parsed
+		try {
+			parsed = JSON.parse(payload)
+		} catch {
+			continue // skip malformed chunks
+		}
+		const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text
+		if (text) {
+			yield text
+		} else if (parsed.error) {
+			throw new Error(`Gemini stream error: ${JSON.stringify(parsed.error)}`)
 		}
 	}
 }

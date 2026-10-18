@@ -41,7 +41,6 @@ function modelReturns(text: string) {
 function modelThrows(error: unknown) {
   streamLLM.mockImplementation(async function* () {
     throw error;
-    // eslint-disable-next-line no-unreachable
     yield "";
   });
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/require-user";
 import { getProfileRow, updateProfile } from "@/lib/db/profile";
 import { conversationStats, countConversations } from "@/lib/db/conversations";
 import { getCompletedLessonIds } from "@/lib/db/lessons";
@@ -12,14 +12,8 @@ import { isLanguageId } from "@/lib/languages";
 import type { ProfileUpdate } from "@/lib/types/profile";
 
 export async function GET() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { supabase, user, response } = await requireUser();
+  if (!user) return response;
 
   const [row, stats, total, completedLessonIds, favoriteIds, generatedLessonsCount, generationEventsCount] =
     await Promise.all([
@@ -46,14 +40,8 @@ export async function GET() {
 }
 
 export async function PATCH(req: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { supabase, user, response } = await requireUser();
+  if (!user) return response;
 
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   if (!body || typeof body !== "object") {

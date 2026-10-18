@@ -1,18 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/require-user";
 import { getProfileRow } from "@/lib/db/profile";
 import { getStripe } from "@/lib/stripe";
 import { isBillingPlan, hasProAccess, PLANS } from "@/lib/billing";
 
 export async function POST(req: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { supabase, user, response } = await requireUser();
+  if (!user) return response;
 
   const body = (await req.json().catch(() => null)) as { plan?: unknown } | null;
   if (!body || !isBillingPlan(body.plan)) {

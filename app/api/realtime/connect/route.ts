@@ -1,15 +1,9 @@
-import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/require-user";
 import { requireActiveSession } from "@/lib/db/conversations";
 
 export async function POST(req: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { supabase, user, response } = await requireUser();
+  if (!user) return response;
 
   const apiKey = process.env.INWORLD_API_KEY;
   if (!apiKey) {

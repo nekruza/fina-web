@@ -2,7 +2,6 @@
 
 import { FC, FormEvent, useState, useRef, useEffect, useCallback } from "react"
 import { toast } from "sonner"
-import { Mic, MicOff, AlertTriangle } from "lucide-react"
 import { useTimer } from "@/lib/hooks/useTimer"
 import { useSpeechRecognition } from "@/lib/hooks/useSpeechRecognition"
 import { useSpeechSynthesis } from "@/lib/hooks/useSpeechSynthesis"
@@ -13,13 +12,24 @@ import { ControlBar } from "./ControlBar"
 import { HintOverlay } from "./HintOverlay"
 import { NotesPanel } from "./NotesPanel"
 import { SessionTimer } from "./SessionTimer"
-import type { Message } from "@/lib/types/conversation"
+import { CallStatusPill } from "./CallStatusPill"
+import { CallUnavailable } from "./CallUnavailable"
+import { EndCallDialog } from "./EndCallDialog"
+import {
+	GoalReachedBanner,
+	MicDeniedBanner,
+	SendReplyButton,
+	SpeechErrorBanner,
+} from "./CallBanners"
+import { YOUR_TURN } from "./callTheme"
+import type { ConversationState, Message } from "@/lib/types/conversation"
 import type { RoleplayScenario } from "@/lib/types/roleplay"
 import { useInworldRealtime } from "@/lib/hooks/useInworldRealtime"
 import { buildConversationInstructions } from "@/lib/utils/buildConversationInstructions"
 import { getTutorById, tutorVoice, type TutorId } from "@/lib/tutors"
 import { getLanguage, speechLocale, type LanguageId } from "@/lib/languages"
 import type { UserLevel } from "@/lib/levels"
+import { sseData } from "@/lib/sse"
 
 interface VoiceCallViewProps {
 	roleplay: RoleplayScenario
@@ -33,24 +43,52 @@ interface VoiceCallViewProps {
 	onReset: () => void
 }
 
-type ConversationState =
-	| "initializing"
-	| "ai_speaking"
-	| "listening"
-	| "processing"
-	| "paused"
-	| "ending"
-
-const YOUR_TURN = "#4ade80"
-const ON_ACCENT = "#0a0d14"
-
 const BEGIN_RE = /^\[BEGIN\]/i
+
+/** Wait this long after the last final transcript before auto-sending. */
+const AUTO_SEND_SILENCE_MS = 2000
 
 /** Drops the auto-sent "[BEGIN]" greeting trigger so it never reaches the UI, the analysis or the saved count. */
 function stripBeginMarker(msgs: Message[]): Message[] {
 	return msgs.filter(
 		(m) => !(m.role === "user" && BEGIN_RE.test(m.content.trim())),
 	)
+}
+
+/** User-facing explanation for a failed getUserMedia({ audio }) call. */
+function micErrorMessage(err: unknown): string {
+	const name = (err as DOMException)?.name
+	if (name === "NotFoundError" || name === "DevicesNotFoundError")
+		return "No microphone detected — plug one in and refresh."
+	if (name === "NotAllowedError" || name === "PermissionDeniedError")
+		return "Microphone access denied — allow it in your browser settings."
+	if (name === "NotReadableError")
+		return "Microphone is in use by another app — close it and refresh."
+	return "Could not access microphone — please refresh and try again."
+}
+
+/** Body for POST /api/ai/voice — the next tutor turn, or hints when `isHint`. */
+function voiceRequestBody(
+	msgs: Message[],
+	ctx: {
+		sessionId?: string | null
+		language: LanguageId
+		level: UserLevel
+		tutorId: TutorId
+		roleplay: RoleplayScenario
+	},
+	isHint: boolean,
+) {
+	const { title, userRole, aiRole, scenario } = ctx.roleplay
+	return JSON.stringify({
+		...(ctx.sessionId !== undefined && { sessionId: ctx.sessionId }),
+		messages: msgs,
+		language: ctx.language,
+		level: ctx.level,
+		tutorId: ctx.tutorId,
+		roleplay: { title, userRole, aiRole, scenario },
+		isHint,
+	})
 }
 
 export const VoiceCallView: FC<VoiceCallViewProps> = ({
@@ -111,6 +149,22 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 	const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 	const lastFinalTranscriptRef = useRef("")
 
+	const clearSilenceTimer = useCallback(() => {
+		if (silenceTimerRef.current) {
+			clearTimeout(silenceTimerRef.current)
+			silenceTimerRef.current = null
+		}
+	}, [])
+
+	/** Stops every camera/mic track so the browser's recording indicator goes off. */
+	const releaseMedia = useCallback(() => {
+		webcamStreamRef.current?.getTracks().forEach((t) => t.stop())
+		webcamStreamRef.current = null
+	}, [])
+
+	/** What the learner has said so far this turn (final + interim). */
+	const liveTranscript = (speech.finalTranscript + speech.transcript).trim()
+
 	// ── Initialize: request media, start session ──
 	useEffect(() => {
 		let mounted = true
@@ -142,16 +196,7 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 						audioStream = null
 					}
 				} catch (err) {
-					const name = (err as DOMException)?.name
-					const msg =
-						name === "NotFoundError" || name === "DevicesNotFoundError" ?
-							"No microphone detected — plug one in and refresh."
-						: name === "NotAllowedError" || name === "PermissionDeniedError" ?
-							"Microphone access denied — allow it in your browser settings."
-						: name === "NotReadableError" ?
-							"Microphone is in use by another app — close it and refresh."
-						:	"Could not access microphone — please refresh and try again."
-					setMicError(msg)
+					setMicError(micErrorMessage(err))
 					setMicPermission((prev) => (prev === true ? true : false))
 				}
 			} else {
@@ -209,8 +254,7 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 			if (!mounted) return
 			timer.pause()
 			realtime.disconnect()
-			webcamStreamRef.current?.getTracks().forEach((track) => track.stop())
-			webcamStreamRef.current = null
+			releaseMedia()
 			setWebcamStream(null)
 			setConnectionFailed(true)
 		})
@@ -228,8 +272,7 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 		speech.stopListening()
 		realtime.disconnect()
 		visualizer.stopAnalyser()
-		webcamStreamRef.current?.getTracks().forEach((track) => track.stop())
-		webcamStreamRef.current = null
+		releaseMedia()
 		setWebcamStream(null)
 		setConnectionFailed(true)
 		// The error event triggers teardown once, rather than on every hook render.
@@ -254,62 +297,40 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 				const res = await fetch("/api/ai/voice", {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
-						sessionId,
-						messages: msgs,
-						language,
-						level,
-						tutorId,
-						roleplay: {
-							title: roleplay.title,
-							userRole: roleplay.userRole,
-							aiRole: roleplay.aiRole,
-							scenario: roleplay.scenario,
-						},
+					body: voiceRequestBody(
+						msgs,
+						{ sessionId, language, level, tutorId, roleplay },
 						isHint,
-					}),
+					),
 				})
 
 				if (!res.ok || !res.body)
 					throw new Error(`Stream failed: HTTP ${res.status}`)
 
-				const reader = res.body.getReader()
-				const decoder = new TextDecoder()
-				let buffer = ""
+				for await (const payload of sseData(res.body)) {
+					if (payload === "[DONE]") break
 
-				outer: while (true) {
-					const { done, value } = await reader.read()
-					if (done) break
-
-					buffer += decoder.decode(value, { stream: true })
-					const lines = buffer.split("\n")
-					buffer = lines.pop() ?? ""
-
-					for (const line of lines) {
-						if (!line.startsWith("data: ")) continue
-						const payload = line.slice(6)
-						if (payload === "[DONE]") break outer
-
-						let parsed: { text?: string; error?: string } | null = null
-						try {
-							parsed = JSON.parse(payload)
-						} catch {
-							// skip malformed JSON chunks
-							continue
-						}
-						if (parsed?.error) throw new Error(parsed.error)
-						if (parsed?.text) {
-							fullText += parsed.text
-							if (!isHint) {
-								setMessages((prev) => {
-									const updated = [...prev]
-									updated[updated.length - 1] = {
-										role: "assistant",
-										content: updated[updated.length - 1].content + parsed!.text,
-									}
-									return updated
-								})
-							}
+					let parsed: { text?: string; error?: string } | null = null
+					try {
+						parsed = JSON.parse(payload)
+					} catch {
+						// skip malformed JSON chunks
+						continue
+					}
+					if (parsed?.error) throw new Error(parsed.error)
+					const chunk = parsed?.text
+					if (chunk) {
+						fullText += chunk
+						if (!isHint) {
+							// Append the chunk to the streaming assistant placeholder
+							setMessages((prev) => {
+								const updated = [...prev]
+								updated[updated.length - 1] = {
+									role: "assistant",
+									content: updated[updated.length - 1].content + chunk,
+								}
+								return updated
+							})
 						}
 					}
 				}
@@ -369,22 +390,32 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 		speech.startListening()
 	}, [speech])
 
+	// ── Legacy STT path: commit the learner's reply and request the tutor's next turn ──
+	const submitUserTurn = useCallback(
+		(text: string) => {
+			clearSilenceTimer()
+			speech.stopListening()
+			const userMsg: Message = { role: "user", content: text }
+			const updatedMsgs = [...messagesRef.current, userMsg]
+			setMessages(updatedMsgs)
+			sendToAI(updatedMsgs)
+		},
+		[clearSilenceTimer, speech, sendToAI],
+	)
+
 	// Keep refs for values needed inside silence timeout callback
 	const speechRef = useRef(speech)
 	speechRef.current = speech
-	const sendToAIRef = useRef(sendToAI)
-	sendToAIRef.current = sendToAI
+	const submitUserTurnRef = useRef(submitUserTurn)
+	submitUserTurnRef.current = submitUserTurn
 
 	// ── Toggle auto-send (clears pending timer when turning off) ──
 	const handleToggleAutoSend = useCallback(() => {
 		setAutoSend((prev) => {
-			if (prev && silenceTimerRef.current) {
-				clearTimeout(silenceTimerRef.current)
-				silenceTimerRef.current = null
-			}
+			if (prev) clearSilenceTimer()
 			return !prev
 		})
-	}, [])
+	}, [clearSilenceTimer])
 
 	// ── Watch for user finishing speaking (silence detection) ──
 	useEffect(() => {
@@ -397,34 +428,23 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 		if (currentFinal && currentFinal !== lastFinalTranscriptRef.current) {
 			lastFinalTranscriptRef.current = currentFinal
 
-			if (silenceTimerRef.current) {
-				clearTimeout(silenceTimerRef.current)
-			}
-
-			// Wait 2s of silence after last final transcript before sending
+			clearSilenceTimer()
 			silenceTimerRef.current = setTimeout(() => {
 				const latestTranscript = speechRef.current.finalTranscript.trim()
 				if (convStateRef.current === "listening" && latestTranscript) {
-					speechRef.current.stopListening()
-					const userMsg: Message = { role: "user", content: latestTranscript }
-					const updatedMsgs = [...messagesRef.current, userMsg]
-					setMessages(updatedMsgs)
-					sendToAIRef.current(updatedMsgs)
+					submitUserTurnRef.current(latestTranscript)
 				}
-			}, 2000)
+			}, AUTO_SEND_SILENCE_MS)
 		}
 
 		// Only clean up on unmount or when convState leaves "listening"
 		// Do NOT clean up when finalTranscript changes (that would kill the timer)
-	}, [convState, speech.finalTranscript, autoSend])
+	}, [convState, speech.finalTranscript, autoSend, clearSilenceTimer])
 
 	// Clean up silence timer when leaving listening state
 	useEffect(() => {
-		if (convState !== "listening" && silenceTimerRef.current) {
-			clearTimeout(silenceTimerRef.current)
-			silenceTimerRef.current = null
-		}
-	}, [convState])
+		if (convState !== "listening") clearSilenceTimer()
+	}, [convState, clearSilenceTimer])
 
 	// ── Sync Realtime agentState → convState ──
 	useEffect(() => {
@@ -515,28 +535,23 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 
 	// ── Manual send (fallback when silence detection doesn't fire) ──
 	const handleManualSend = useCallback(() => {
-		const transcript = (speech.finalTranscript + speech.transcript).trim()
-		if (!transcript || convStateRef.current !== "listening") return
+		if (!liveTranscript || convStateRef.current !== "listening") return
+		submitUserTurn(liveTranscript)
+	}, [liveTranscript, submitUserTurn])
 
-		if (silenceTimerRef.current) {
-			clearTimeout(silenceTimerRef.current)
-			silenceTimerRef.current = null
-		}
-		speech.stopListening()
-		const userMsg: Message = { role: "user", content: transcript }
-		const updatedMsgs = [...messagesRef.current, userMsg]
-		setMessages(updatedMsgs)
-		sendToAI(updatedMsgs)
-	}, [speech, sendToAI])
+	// ── Realtime hybrid: inject text as a user message ──
+	const sendRealtimeText = useCallback(
+		(text: string) => {
+			speech.stopListening()
+			speech.resetTranscript()
+			realtime.sendText(text)
+		},
+		[speech, realtime],
+	)
 
-	// ── Realtime hybrid send: inject local transcript as text message ──
 	const handleRealtimeSend = useCallback(() => {
-		const text = (speech.finalTranscript + speech.transcript).trim()
-		if (!text) return
-		speech.stopListening()
-		speech.resetTranscript()
-		realtime.sendText(text)
-	}, [speech, realtime])
+		if (liveTranscript) sendRealtimeText(liveTranscript)
+	}, [liveTranscript, sendRealtimeText])
 
 	// ── Typed reply: same routing as a spoken turn ──
 	const handleTypedSubmit = useCallback(
@@ -547,24 +562,10 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 			setTypedText("")
 			setTypedInputOpen(false)
 
-			if (useRealtime) {
-				speech.stopListening()
-				speech.resetTranscript()
-				realtime.sendText(text)
-				return
-			}
-
-			if (silenceTimerRef.current) {
-				clearTimeout(silenceTimerRef.current)
-				silenceTimerRef.current = null
-			}
-			speech.stopListening()
-			const userMsg: Message = { role: "user", content: text }
-			const updatedMsgs = [...messagesRef.current, userMsg]
-			setMessages(updatedMsgs)
-			sendToAI(updatedMsgs)
+			if (useRealtime) sendRealtimeText(text)
+			else submitUserTurn(text)
 		},
-		[typedText, useRealtime, speech, realtime, sendToAI],
+		[typedText, useRealtime, sendRealtimeText, submitUserTurn],
 	)
 
 	// ── Interrupt AI mid-response ──
@@ -584,22 +585,11 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 		try {
 			const msgs = useRealtime ? realtime.messages : messagesRef.current
 
+			// Hints are not a session turn, so no sessionId.
 			const res = await fetch("/api/ai/voice", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					messages: msgs,
-					language,
-					level,
-					tutorId,
-					roleplay: {
-						title: roleplay.title,
-						userRole: roleplay.userRole,
-						aiRole: roleplay.aiRole,
-						scenario: roleplay.scenario,
-					},
-					isHint: true,
-				}),
+				body: voiceRequestBody(msgs, { language, level, tutorId, roleplay }, true),
 			})
 			const { hints: nextHints, error } = await res.json()
 			if (error) throw new Error(error)
@@ -659,15 +649,14 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 	}, [timer, startListeningToUser])
 
 	const handleConfirmEnd = useCallback(() => {
-		webcamStreamRef.current?.getTracks().forEach((t) => t.stop())
-		webcamStreamRef.current = null
+		releaseMedia()
 		visualizer.stopAnalyser()
 		if (useRealtime) realtime.disconnect()
 		onComplete(
 			stripBeginMarker(useRealtime ? realtime.messages : messagesRef.current),
 			timer.seconds,
 		)
-	}, [visualizer, useRealtime, realtime, onComplete, timer.seconds])
+	}, [releaseMedia, visualizer, useRealtime, realtime, onComplete, timer.seconds])
 
 	// ── Toggle camera ──
 	const handleToggleCamera = useCallback(() => {
@@ -692,15 +681,8 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 			visualizer.stopAnalyser()
 			timer.pause()
 
-			// Clear pending silence detection timer
-			if (silenceTimerRef.current) {
-				clearTimeout(silenceTimerRef.current)
-				silenceTimerRef.current = null
-			}
-
-			// Stop all media tracks so browser camera/mic indicator goes off
-			webcamStreamRef.current?.getTracks().forEach((t) => t.stop())
-			webcamStreamRef.current = null
+			clearSilenceTimer()
+			releaseMedia()
 
 			// Reset refs
 			lastFinalTranscriptRef.current = ""
@@ -725,10 +707,7 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 		useRealtime ? realtime.messages : messages,
 	)
 	const captionLastMsg = visibleMessages[visibleMessages.length - 1]
-	const captionInterim =
-		convState === "listening" ?
-			(speech.finalTranscript + speech.transcript).trim()
-		:	""
+	const captionInterim = convState === "listening" ? liveTranscript : ""
 	const videoCaption =
 		captionInterim ? { text: captionInterim, role: "user" as const }
 		: captionLastMsg ?
@@ -740,36 +719,28 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 
 	const canSpeakHint = convState === "listening" || convState === "paused"
 
+	// Something has been heard this turn that the learner can send.
+	const hasSpokenReply =
+		convState === "listening" && !!(speech.finalTranscript || speech.transcript)
+
+	// Shared by the mobile transcript sheet and the md+ side panel.
+	const transcriptProps = {
+		messages: visibleMessages,
+		interimTranscript: captionInterim,
+		isActivelyListening: convState === "listening" && !!speech.transcript,
+		isVisible: showCaptions,
+		tutorName: tutor.name,
+		nativeLanguage,
+	}
+
 	// ── Startup failure or unsupported browser ──
 	if (connectionFailed || (!useRealtime && !speech.isSupported)) {
 		return (
-			<div className="fixed inset-0 z-50 bg-[#0a0d14] flex items-center justify-center">
-				<div className="text-center max-w-md px-6">
-					<AlertTriangle
-						className="w-12 h-12 text-amber-300 mx-auto mb-4"
-						aria-hidden
-					/>
-					<h2 className="font-display text-2xl text-white mb-2">
-						{connectionFailed ?
-							"Couldn’t connect to your tutor"
-						:	"Voice practice needs Chrome or Edge"}
-					</h2>
-					<p className="text-white/60 mb-6">
-						{connectionFailed ?
-							"Check your connection, then go back and start the conversation again."
-						:	`This browser can’t recognise speech yet. Open Fina in Chrome or Edge to talk with ${tutor.name}.`
-						}
-					</p>
-					<button
-						type="button"
-						onClick={onReset}
-						className="px-6 py-2.5 rounded-full font-semibold text-sm transition hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4ade80]"
-						style={{ background: YOUR_TURN, color: ON_ACCENT }}
-					>
-						Go back
-					</button>
-				</div>
-			</div>
+			<CallUnavailable
+				reason={connectionFailed ? "connection" : "unsupported"}
+				tutorName={tutor.name}
+				onBack={onReset}
+			/>
 		)
 	}
 
@@ -795,61 +766,7 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 				</div>
 
 				<div className="flex items-center gap-2 md:gap-3">
-					{/* State indicator */}
-					<div
-						role="status"
-						aria-live="polite"
-						className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5"
-					>
-						{convState === "listening" && (
-							<>
-								<Mic
-									className="w-3.5 h-3.5"
-									style={{ color: YOUR_TURN }}
-									aria-hidden
-								/>
-								<span
-									className="text-xs font-medium"
-									style={{ color: YOUR_TURN }}
-								>
-									Your turn
-								</span>
-							</>
-						)}
-						{convState === "ai_speaking" && (
-							<>
-								<span className="w-2 h-2 rounded-full bg-white motion-safe:animate-pulse" />
-								<span className="text-xs text-white/85 font-medium">
-									{tutor.name} is speaking
-								</span>
-							</>
-						)}
-						{convState === "processing" && (
-							<>
-								<span className="w-2 h-2 rounded-full bg-amber-300 motion-safe:animate-pulse" />
-								<span className="text-xs text-amber-300 font-medium">
-									{tutor.name} is thinking…
-								</span>
-							</>
-						)}
-						{convState === "initializing" && (
-							<>
-								<span className="w-2 h-2 rounded-full bg-white/40 motion-safe:animate-pulse" />
-								<span className="text-xs text-white/50 font-medium">
-									Connecting…
-								</span>
-							</>
-						)}
-						{convState === "paused" && (
-							<>
-								<span className="w-2 h-2 rounded-full bg-orange-300" />
-								<span className="text-xs text-orange-300 font-medium">
-									Paused
-								</span>
-							</>
-						)}
-					</div>
-
+					<CallStatusPill state={convState} tutorName={tutor.name} />
 					<SessionTimer
 						formatted={timer.formatted}
 						isRunning={timer.isRunning}
@@ -864,61 +781,18 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 			>
 				{/* Video + controls column */}
 				<div className="flex-1 flex flex-col gap-4 min-w-0 min-h-0 relative">
-					{/* Inline mic permission banner */}
-					{micPermission === false && (
-						<div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500/15 border border-red-500/25 mb-1">
-							<MicOff className="w-4 h-4 text-red-400 shrink-0" aria-hidden />
-							<p className="text-xs text-red-300 flex-1">
-								{micError ??
-									"Microphone access denied — allow it in your browser settings."}
-							</p>
-							<button
-								type="button"
-								onClick={() => window.location.reload()}
-								className="text-xs text-red-300 underline underline-offset-2 hover:text-red-200 shrink-0"
-							>
-								Retry
-							</button>
-						</div>
-					)}
-					{speech.error && (
-						<div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500/15 border border-amber-500/25 mb-1">
-							<AlertTriangle
-								className="w-4 h-4 text-amber-300 shrink-0"
-								aria-hidden
-							/>
-							<p className="text-xs text-amber-200">{speech.error}</p>
-						</div>
-					)}
+					{micPermission === false && <MicDeniedBanner message={micError} />}
+					{speech.error && <SpeechErrorBanner message={speech.error} />}
 
-					{/* Daily goal reached — non-blocking */}
 					{showGoalBanner && (
-						<div
-							role="status"
-							className="flex flex-wrap items-center gap-2 px-4 py-2.5 rounded-xl bg-[#4ade80]/10 border border-[#4ade80]/25"
-						>
-							<p className="flex-1 min-w-[12rem] text-sm text-white/90">
-								{`🎉 You reached your ${dailyGoalMinutes}-minute goal!`}
-							</p>
-							<button
-								type="button"
-								onClick={() => setGoalDismissed(true)}
-								className="h-8 rounded-full px-3 text-xs font-semibold text-white/80 border border-white/15 hover:bg-white/5 transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4ade80]"
-							>
-								Keep talking
-							</button>
-							<button
-								type="button"
-								onClick={() => {
-									setGoalDismissed(true)
-									handleStop()
-								}}
-								className="h-8 rounded-full px-3 text-xs font-semibold transition hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-								style={{ background: YOUR_TURN, color: ON_ACCENT }}
-							>
-								Finish
-							</button>
-						</div>
+						<GoalReachedBanner
+							minutes={dailyGoalMinutes}
+							onKeepTalking={() => setGoalDismissed(true)}
+							onFinish={() => {
+								setGoalDismissed(true)
+								handleStop()
+							}}
+						/>
 					)}
 
 					<VideoArea
@@ -943,27 +817,15 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 					</div>
 
 					{/* Send button — realtime hybrid mode */}
-					{useRealtime &&
-						convState === "listening" &&
-						(speech.finalTranscript || speech.transcript) && (
-							<div className="shrink-0 flex items-center justify-center">
-								<button
-									type="button"
-									onClick={handleRealtimeSend}
-									aria-label="Send spoken reply"
-									className="flex items-center gap-2 px-5 py-2 rounded-full font-semibold text-sm transition hover:opacity-90 motion-safe:active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-									style={{ background: YOUR_TURN, color: ON_ACCENT }}
-								>
-									<Mic className="w-4 h-4" aria-hidden />
-									Send
-								</button>
-							</div>
-						)}
+					{useRealtime && hasSpokenReply && (
+						<div className="shrink-0 flex items-center justify-center">
+							<SendReplyButton onClick={handleRealtimeSend} />
+						</div>
+					)}
 
 					{/* Auto-send toggle + manual send button (legacy STT path only) */}
 					{convState === "listening" && !useRealtime && (
 						<div className="shrink-0 flex items-center justify-center gap-3">
-							{/* Auto-send toggle */}
 							<button
 								type="button"
 								onClick={handleToggleAutoSend}
@@ -995,33 +857,14 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 								Auto-send {autoSend ? "on" : "off"}
 							</button>
 
-							{/* Manual send — shown when there's transcript */}
-							{(speech.finalTranscript || speech.transcript) && (
-								<button
-									type="button"
-									onClick={handleManualSend}
-									aria-label="Send spoken reply"
-									className="flex items-center gap-2 px-5 py-2 rounded-full font-semibold text-sm transition hover:opacity-90 motion-safe:active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-									style={{ background: YOUR_TURN, color: ON_ACCENT }}
-								>
-									<Mic className="w-4 h-4" aria-hidden />
-									Send
-								</button>
-							)}
+							{hasSpokenReply && <SendReplyButton onClick={handleManualSend} />}
 						</div>
 					)}
 
 					{/* Transcript bottom sheet — below md only (the side panel covers md+) */}
 					<TranscriptPanel
 						variant="sheet"
-						messages={visibleMessages}
-						interimTranscript={captionInterim}
-						isActivelyListening={
-							convState === "listening" && !!speech.transcript
-						}
-						isVisible={showCaptions}
-						tutorName={tutor.name}
-						nativeLanguage={nativeLanguage}
+						{...transcriptProps}
 						onClose={() => setShowCaptions(false)}
 					/>
 
@@ -1075,69 +918,13 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 				</div>
 
 				{/* Transcript side panel */}
-				<TranscriptPanel
-					messages={visibleMessages}
-					interimTranscript={
-						convState === "listening" ?
-							(speech.finalTranscript + speech.transcript).trim()
-						:	""
-					}
-					isActivelyListening={convState === "listening" && !!speech.transcript}
-					isVisible={showCaptions}
-					tutorName={tutor.name}
-					nativeLanguage={nativeLanguage}
-				/>
+				<TranscriptPanel {...transcriptProps} />
 			</div>
 
-			{/* Notes panel */}
 			<NotesPanel isOpen={showNotes} onClose={() => setShowNotes(false)} />
 
-			{/* End conversation modal */}
 			{showEndModal && (
-				<div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center px-4">
-					<div
-						role="dialog"
-						aria-modal="true"
-						aria-labelledby="end-conversation-title"
-						aria-describedby="end-conversation-body"
-						onKeyDown={(e) => {
-							if (e.key === "Escape") handleCancelEnd()
-						}}
-						className="bg-[#111723] border border-white/10 rounded-3xl p-7 max-w-sm w-full shadow-2xl"
-					>
-						<h3
-							id="end-conversation-title"
-							className="font-display text-2xl text-white mb-2"
-						>
-							End conversation
-						</h3>
-						<p
-							id="end-conversation-body"
-							className="text-sm text-white/60 mb-6"
-						>
-							Your conversation will be saved and analysed.
-						</p>
-
-						<div className="flex gap-3">
-							<button
-								type="button"
-								autoFocus
-								onClick={handleCancelEnd}
-								className="flex-1 py-2.5 rounded-full text-sm font-medium border border-white/20 text-white/70 hover:bg-white/5 transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4ade80]"
-							>
-								Cancel
-							</button>
-							<button
-								type="button"
-								onClick={handleConfirmEnd}
-								className="flex-1 py-2.5 rounded-full text-sm font-semibold transition hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-								style={{ background: YOUR_TURN, color: ON_ACCENT }}
-							>
-								Complete
-							</button>
-						</div>
-					</div>
-				</div>
+				<EndCallDialog onCancel={handleCancelEnd} onConfirm={handleConfirmEnd} />
 			)}
 		</div>
 	)
