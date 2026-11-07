@@ -94,7 +94,7 @@ export function StreakWeek({ currentStreak, weeklyActivity, isLoading = false }:
               </span>
               <span className="sr-only">
                 {day.name}
-                {isToday ? " (today)" : ""}: {active ? "practised" : "not practised"}
+                {isToday ? " (today)" : ""}: {active ? "practiced" : "not practiced"}
               </span>
             </li>
           );

@@ -31,7 +31,7 @@ const TITLES: Record<ProUpgradeReason, string> = {
 const DESCRIPTIONS: Record<ProUpgradeReason, string> = {
   conversations: `Free accounts include ${FREE_CONVERSATIONS} voice conversations. Fina Pro gives you unlimited practice.`,
   generations: `Free accounts include ${FREE_GENERATIONS} AI word generations. Fina Pro gives you unlimited word lists.`,
-  upgrade: "Practise as much as you like, with every tutor and every roleplay.",
+  upgrade: "Practice as much as you like, with every tutor and every roleplay.",
 };
 
 const BENEFITS = [

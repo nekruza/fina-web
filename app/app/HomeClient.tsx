@@ -152,7 +152,7 @@ export function HomeClient() {
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-semibold text-ink">Start speaking</span>
-                  <span className="mt-0.5 block text-xs leading-relaxed text-sub">Choose a roleplay and practise aloud</span>
+                  <span className="mt-0.5 block text-xs leading-relaxed text-sub">Choose a roleplay and practice aloud</span>
                 </span>
                 <ArrowRight className="h-4 w-4 shrink-0 text-sub transition-transform group-hover:translate-x-0.5" aria-hidden />
               </Link>

@@ -98,7 +98,7 @@ export default function RoleplayPage() {
     <div className="mx-auto max-w-6xl">
       <header className="flex flex-col gap-5 border-b border-line pb-7 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent-brand">Practise in context</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent-brand">Practice in context</p>
           <h1 className="mt-2 font-display text-3xl leading-tight text-ink sm:text-4xl">Roleplay</h1>
           <p className="mt-2 max-w-[55ch] text-sm leading-relaxed text-sub">Pick a situation, then build confidence by speaking it through.</p>
         </div>

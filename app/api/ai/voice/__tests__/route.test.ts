@@ -102,7 +102,7 @@ describe("validation", () => {
     await (await POST(voiceRequest({ ...TURN, language: "klingon" }))).text();
 
     expect(streamLLM.mock.calls[0][0].systemPrompt).toContain(
-      "Speak ONLY in English."
+      "Speak ONLY in American English."
     );
   });
 

@@ -86,7 +86,7 @@ export function StreakCard({ currentStreak, weeklyActivity, isLoading = false, n
                 </span>
                 <span className="sr-only">
                   {day.name}
-                  {isToday ? " (today)" : ""}: {active ? "practised" : "not practised"}
+                  {isToday ? " (today)" : ""}: {active ? "practiced" : "not practiced"}
                 </span>
               </li>
             );

@@ -32,6 +32,7 @@ export const TUTORS: Tutor[] = [
     accent: "#2E5E3E",
     voices: {
       english: "Ashley",
+      english_uk: "Ashley",
       spanish: "Lupita",
       french: "Hélène",
       german: "Johanna",
@@ -52,6 +53,7 @@ export const TUTORS: Tutor[] = [
     accent: "#9A3412",
     voices: {
       english: "Clive",
+      english_uk: "Clive",
       spanish: "Diego",
       french: "Alain",
       german: "Josef",
@@ -72,6 +74,7 @@ export const TUTORS: Tutor[] = [
     accent: "#1D4ED8",
     voices: {
       english: "Nate",
+      english_uk: "Nate",
       spanish: "Miguel",
       french: "Étienne",
       german: "Josef",

@@ -1,8 +1,21 @@
 import { LANGUAGES, getLanguage, speechLocale, pronunciationVoice, isLanguageId, ONBOARDING_LANGUAGE_IDS } from "@/lib/languages";
+import { tutorVoice, TUTORS } from "@/lib/tutors";
 
 describe("languages", () => {
-  it("lists the nine supported languages", () => {
-    expect(LANGUAGES.map((l) => l.id)).toEqual(["english","spanish","french","german","chinese","japanese","portuguese","russian","arabic"]);
+  it("lists the supported languages with US and UK English", () => {
+    expect(LANGUAGES.map((l) => l.id)).toEqual(["english","english_uk","spanish","french","german","chinese","japanese","portuguese","russian","arabic"]);
+  });
+  it("labels US English with the US flag and UK English with the GB flag", () => {
+    expect(getLanguage("english")).toMatchObject({ label: "English (US)", flag: "🇺🇸", locale: "en-US", code: "EN", promptLabel: "American English" });
+    expect(getLanguage("english_uk")).toMatchObject({ label: "English (UK)", flag: "🇬🇧", locale: "en-GB", code: "EN", promptLabel: "British English" });
+  });
+  it("uses the plain language name as the prompt label for every other language", () => {
+    expect(getLanguage("spanish").promptLabel).toBe("Spanish");
+  });
+  it("gives UK English a speech locale, pronunciation voice and tutor voices", () => {
+    expect(speechLocale("english_uk")).toBe("en-GB");
+    expect(pronunciationVoice("english_uk")).toBe("Ashley");
+    for (const tutor of TUTORS) expect(tutorVoice(tutor, "english_uk")).toBe(tutor.voices.english);
   });
   it("falls back to English for unknown ids", () => {
     expect(getLanguage("klingon").id).toBe("english");
@@ -21,7 +34,7 @@ describe("languages", () => {
     expect(isLanguageId("french")).toBe(true);
     expect(isLanguageId("FRENCH")).toBe(false);
   });
-  it("offers eight onboarding languages in mobile order", () => {
-    expect(ONBOARDING_LANGUAGE_IDS).toEqual(["english","spanish","french","japanese","german","portuguese","chinese","arabic"]);
+  it("offers nine onboarding languages, mobile order with UK English after US", () => {
+    expect(ONBOARDING_LANGUAGE_IDS).toEqual(["english","english_uk","spanish","french","japanese","german","portuguese","chinese","arabic"]);
   });
 });

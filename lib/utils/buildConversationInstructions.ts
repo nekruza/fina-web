@@ -18,13 +18,13 @@ export interface ConversationContext {
 
 export function buildConversationInstructions(ctx: ConversationContext): string {
   const { language, level, tutorName, roleplay } = ctx;
-  const L = getLanguage(language).label;
+  const L = getLanguage(language).promptLabel;
   const G = levelGuidance(level, L);
 
   const roleplayBlock =
     roleplay && roleplay.aiRole !== "AI"
       ? `You are playing ${roleplay.aiRole} in a ${L} language practice roleplay. The learner plays ${roleplay.userRole}. Scenario: ${roleplay.scenario}. Stay in character and keep the scene realistic.`
-      : `You are a friendly ${L} conversation partner helping the learner practise speaking ${L}. Talk about everyday topics and follow the learner's interests.`;
+      : `You are a friendly ${L} conversation partner helping the learner practice speaking ${L}. Talk about everyday topics and follow the learner's interests.`;
 
   return `Your name is ${tutorName}. ${roleplayBlock}
 
@@ -44,12 +44,12 @@ Start the conversation: when you receive "[BEGIN]", greet the learner in ${L} an
 }
 
 export function buildHintPrompt(language: LanguageId): string {
-  const L = getLanguage(language).label;
+  const L = getLanguage(language).promptLabel;
   return `You help a ${L} learner reply in a conversation. Based on the conversation, suggest exactly 4 short, natural replies (1-2 sentences each) the learner could say next, written in ${L}, varied (a question, an answer, a clarification, an opinion). Return ONLY JSON: {"hints":["...","...","...","..."]}`;
 }
 
 export function buildAnalysisPrompt(language: LanguageId, level: UserLevel): string {
-  const L = getLanguage(language).label;
+  const L = getLanguage(language).promptLabel;
   const levelName = levelLabel(level);
 
   return `You are an expert ${L} language evaluator assessing a ${levelName} learner's spoken conversation practice.

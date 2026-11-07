@@ -29,7 +29,7 @@ export function buildVocabularyPrompt(input: {
   level: UserLevel;
   language: LanguageId;
 }): string {
-  const languageLabel = getLanguage(input.language).label;
+  const languageLabel = getLanguage(input.language).promptLabel;
   const level = levelLabel(input.level).toLowerCase();
 
   return `Generate exactly ${input.count} ${languageLabel} vocabulary words about "${input.topic}" for a ${level} learner, difficulty ${input.difficulty}. Each word, definition and example must be written in ${languageLabel}. Return ONLY a JSON array of objects with keys: word, definition, example, pronunciation (IPA or romanization), partOfSpeech (noun|verb|adjective|adverb|preposition|conjunction|interjection), difficulty (easy|medium|hard), category.`;
