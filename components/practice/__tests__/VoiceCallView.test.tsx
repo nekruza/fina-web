@@ -31,26 +31,32 @@ jest.mock("../TranscriptPanel", () => ({ TranscriptPanel: () => null }))
 jest.mock("../ControlBar", () => ({
 	ControlBar: ({
 		onToggleTypedInput,
+		onHint,
 		typedInputOpen,
 		typedInputDisabled,
 	}: {
 		onToggleTypedInput: () => void
+		onHint: () => void
 		typedInputOpen: boolean
 		typedInputDisabled?: boolean
 	}) => (
-		<button
-			type="button"
-			aria-label="Type a message"
-			aria-pressed={typedInputOpen}
-			disabled={typedInputDisabled}
-			onClick={onToggleTypedInput}
-		>
-			Type a message
-		</button>
+		<>
+			<button
+				type="button"
+				aria-label="Type a message"
+				aria-pressed={typedInputOpen}
+				disabled={typedInputDisabled}
+				onClick={onToggleTypedInput}
+			>
+				Type a message
+			</button>
+			<button type="button" aria-label="Get a hint" onClick={onHint}>
+				Get a hint
+			</button>
+		</>
 	),
 }))
 jest.mock("../HintOverlay", () => ({ HintOverlay: () => null }))
-jest.mock("../NotesPanel", () => ({ NotesPanel: () => null }))
 
 const { useInworldRealtime } = jest.requireMock(
 	"@/lib/hooks/useInworldRealtime",
@@ -227,5 +233,20 @@ it("includes the conversation session in fallback voice requests", async () => {
 		),
 	)
 	const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body)
+	expect(body.sessionId).toBe("session-1")
+})
+
+it("includes the conversation session in hint requests", async () => {
+	global.fetch = jest
+		.fn()
+		.mockResolvedValue({ json: async () => ({ hints: ["Try saying hello"] }) })
+	renderCall()
+	await waitFor(() => expect(connect).toHaveBeenCalled())
+	fireEvent.click(screen.getByRole("button", { name: "Get a hint" }))
+	await waitFor(() => expect(global.fetch).toHaveBeenCalled())
+	const [url, init] = (global.fetch as jest.Mock).mock.calls[0]
+	const body = JSON.parse(init.body)
+	expect(url).toBe("/api/ai/voice")
+	expect(body.isHint).toBe(true)
 	expect(body.sessionId).toBe("session-1")
 })

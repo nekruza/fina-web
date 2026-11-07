@@ -10,7 +10,6 @@ import { VideoArea } from "./VideoArea"
 import { TranscriptPanel } from "./TranscriptPanel"
 import { ControlBar } from "./ControlBar"
 import { HintOverlay } from "./HintOverlay"
-import { NotesPanel } from "./NotesPanel"
 import { SessionTimer } from "./SessionTimer"
 import { CallStatusPill } from "./CallStatusPill"
 import { CallUnavailable } from "./CallUnavailable"
@@ -111,7 +110,6 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 	const [convState, setConvState] = useState<ConversationState>("initializing")
 	const [webcamStream, setWebcamStream] = useState<MediaStream | null>(null)
 	const [showCaptions, setShowCaptions] = useState(false)
-	const [showNotes, setShowNotes] = useState(false)
 	const [hints, setHints] = useState<string[] | null>(null)
 	const [hintLoading, setHintLoading] = useState(false)
 	const [showEndModal, setShowEndModal] = useState(false)
@@ -585,11 +583,11 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 		try {
 			const msgs = useRealtime ? realtime.messages : messagesRef.current
 
-			// Hints are not a session turn, so no sessionId.
+			// The route authorises every request against the active session, hints included.
 			const res = await fetch("/api/ai/voice", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: voiceRequestBody(msgs, { language, level, tutorId, roleplay }, true),
+				body: voiceRequestBody(msgs, { sessionId, language, level, tutorId, roleplay }, true),
 			})
 			const { hints: nextHints, error } = await res.json()
 			if (error) throw new Error(error)
@@ -601,7 +599,7 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 		} finally {
 			setHintLoading(false)
 		}
-	}, [language, level, tutorId, roleplay, useRealtime, realtime])
+	}, [sessionId, language, level, tutorId, roleplay, useRealtime, realtime])
 
 	const dismissHints = useCallback(() => setHints(null), [])
 
@@ -878,8 +876,6 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 							onToggleCamera={handleToggleCamera}
 							cameraOn={cameraOn}
 							onStop={handleStop}
-							onToggleNotes={() => setShowNotes((v) => !v)}
-							notesOpen={showNotes}
 							onToggleTypedInput={() => setTypedInputOpen((v) => !v)}
 							typedInputOpen={typedInputOpen}
 							typedInputDisabled={convState !== "listening"}
@@ -920,8 +916,6 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 				{/* Transcript side panel */}
 				<TranscriptPanel {...transcriptProps} />
 			</div>
-
-			<NotesPanel isOpen={showNotes} onClose={() => setShowNotes(false)} />
 
 			{showEndModal && (
 				<EndCallDialog onCancel={handleCancelEnd} onConfirm={handleConfirmEnd} />

@@ -1,7 +1,7 @@
 "use client";
 
 import { FC, useRef, useEffect, useState } from "react";
-import { MessageSquare, Loader2, X } from "lucide-react";
+import { MessageSquare, Loader2, X, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
 import type { Message } from "@/lib/types/conversation";
 import { getLanguage, type LanguageId } from "@/lib/languages";
@@ -44,7 +44,26 @@ export const TranscriptPanel: FC<TranscriptPanelProps> = ({
   const [translations, setTranslations] = useState<Record<number, CachedTranslation>>({});
   const [showTranslated, setShowTranslated] = useState<Record<number, boolean>>({});
   const [pending, setPending] = useState<Record<number, boolean>>({});
+  const [copied, setCopied] = useState(false);
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const native = getLanguage(nativeLanguage);
+
+  useEffect(() => () => clearTimeout(copiedTimer.current), []);
+
+  const handleCopy = async () => {
+    const text = messages
+      .map((m) => `${m.role === "assistant" ? tutorName : "You"}: ${m.content}`)
+      .join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("Transcript copied");
+      setCopied(true);
+      clearTimeout(copiedTimer.current);
+      copiedTimer.current = setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Could not copy transcript");
+    }
+  };
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -108,12 +127,25 @@ export const TranscriptPanel: FC<TranscriptPanelProps> = ({
         <span className="text-xs font-semibold text-white/50 uppercase tracking-wider">
           Live transcript
         </span>
+        <button
+          type="button"
+          onClick={handleCopy}
+          disabled={messages.length === 0}
+          aria-label="Copy transcript"
+          className="ml-auto flex h-7 w-7 items-center justify-center rounded-full text-white/50 transition hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4ade80] disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-white/50"
+        >
+          {copied ? (
+            <Check className="h-4 w-4 text-[#4ade80]" aria-hidden />
+          ) : (
+            <Copy className="h-4 w-4" aria-hidden />
+          )}
+        </button>
         {isSheet && onClose && (
           <button
             type="button"
             onClick={onClose}
             aria-label="Close captions"
-            className="ml-auto flex h-7 w-7 items-center justify-center rounded-full text-white/50 transition hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4ade80]"
+            className="flex h-7 w-7 items-center justify-center rounded-full text-white/50 transition hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4ade80]"
           >
             <X className="h-4 w-4" aria-hidden />
           </button>

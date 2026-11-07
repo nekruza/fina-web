@@ -5,7 +5,6 @@ import {
   Subtitles,
   Lightbulb,
   Square,
-  FileText,
   Video,
   VideoOff,
   StopCircle,
@@ -20,8 +19,6 @@ interface ControlBarProps {
   onToggleCamera: () => void;
   cameraOn: boolean;
   onStop: () => void;
-  onToggleNotes: () => void;
-  notesOpen: boolean;
   onToggleTypedInput: () => void;
   typedInputOpen: boolean;
   typedInputDisabled?: boolean;
@@ -85,8 +82,6 @@ export const ControlBar: FC<ControlBarProps> = ({
   onToggleCamera,
   cameraOn,
   onStop,
-  onToggleNotes,
-  notesOpen,
   onToggleTypedInput,
   typedInputOpen,
   typedInputDisabled,
@@ -94,13 +89,6 @@ export const ControlBar: FC<ControlBarProps> = ({
   isAISpeaking,
 }) => (
   <div className="flex max-w-full items-center justify-center gap-1.5 sm:gap-2 md:gap-3 px-2 sm:px-3 md:px-6 py-2 md:py-3 rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/10">
-    <ControlButton
-      icon={<FileText className={`${iconClass} text-white/80`} aria-hidden />}
-      label="Notes"
-      onClick={onToggleNotes}
-      active={notesOpen}
-      pressed={notesOpen}
-    />
     <ControlButton
       icon={<Subtitles className={`${iconClass} text-white/80`} aria-hidden />}
       label="Captions"

@@ -31,6 +31,43 @@ beforeEach(() => {
   global.fetch = jest.fn();
 });
 
+describe("TranscriptPanel copy", () => {
+  const writeText = jest.fn();
+
+  beforeEach(() => {
+    writeText.mockReset().mockResolvedValue(undefined);
+    (toast.success as jest.Mock).mockClear();
+    (toast.error as jest.Mock).mockClear();
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+  });
+
+  it("copies the whole transcript as plain text with speaker names", async () => {
+    renderPanel();
+    fireEvent.click(screen.getByRole("button", { name: "Copy transcript" }));
+
+    await waitFor(() =>
+      expect(writeText).toHaveBeenCalledWith(
+        "Luna: Hello! How are you today?\nYou: I am good, thanks."
+      )
+    );
+    expect(toast.success).toHaveBeenCalledWith("Transcript copied");
+  });
+
+  it("shows an error toast when the clipboard is unavailable", async () => {
+    writeText.mockRejectedValue(new Error("denied"));
+    renderPanel();
+    fireEvent.click(screen.getByRole("button", { name: "Copy transcript" }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Could not copy transcript"));
+    expect(toast.success).not.toHaveBeenCalled();
+  });
+
+  it("disables the copy button while there is nothing to copy", () => {
+    renderPanel([]);
+    expect(screen.getByRole("button", { name: "Copy transcript" })).toBeDisabled();
+  });
+});
+
 describe("TranscriptPanel", () => {
   it("labels tutor lines with the tutor's name and learner lines with You", () => {
     renderPanel();
