@@ -38,7 +38,9 @@ export function FlashcardDeck({
   const clampedInitial = Math.min(Math.max(initialIndex, 0), Math.max(total - 1, 0));
   const [currentIndex, setCurrentIndex] = useState(clampedInitial);
 
-  const { play, loadingKey, playingKey } = usePronunciation(language);
+  // A generated lesson keeps the language it was written in, whatever the profile says now.
+  const cardLanguage = lesson.language ?? language;
+  const { play, loadingKey, playingKey } = usePronunciation(cardLanguage);
 
   const isComplete = currentIndex >= total;
   const currentWord = !isComplete ? words[currentIndex] : undefined;
@@ -157,6 +159,7 @@ export function FlashcardDeck({
             {currentWord && (
               <Flashcard
                 word={currentWord}
+                language={cardLanguage}
                 isFavorite={favoriteIds.has(currentWord.id)}
                 onToggleFavorite={() => onToggleFavorite(currentWord, !favoriteIds.has(currentWord.id))}
                 playState={loadingKey === currentWord.id ? "loading" : playingKey === currentWord.id ? "playing" : "idle"}

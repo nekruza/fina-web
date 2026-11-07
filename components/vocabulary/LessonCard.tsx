@@ -3,17 +3,21 @@
 import Link from "next/link";
 import { Check, Trash2 } from "lucide-react";
 import type { Lesson } from "@/lib/types/vocabulary";
+import type { LanguageId } from "@/lib/languages";
+import { LanguageFlag } from "./LanguageFlag";
 
 export interface LessonCardProps {
   lesson: Lesson;
   href: string;
   completed: boolean;
+  /** Language the lesson is in; omitted when unknown, in which case no flag is shown. */
+  language?: LanguageId;
   /** Only generated lessons can be deleted. */
   onDelete?: () => void;
 }
 
 /** A single lesson tile in the lessons grid — predefined topic or AI-generated. */
-export function LessonCard({ lesson, href, completed, onDelete }: LessonCardProps) {
+export function LessonCard({ lesson, href, completed, language, onDelete }: LessonCardProps) {
   return (
     <div className="relative">
       <Link
@@ -33,11 +37,14 @@ export function LessonCard({ lesson, href, completed, onDelete }: LessonCardProp
       </Link>
 
       <div className="pointer-events-none absolute top-2 left-2 right-2 flex items-start justify-between">
-        {lesson.isUserGenerated && (
-          <span className="rounded-full bg-ink px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-cream">
-            AI
-          </span>
-        )}
+        <div className="flex items-center gap-1.5">
+          {lesson.isUserGenerated && (
+            <span className="rounded-full bg-ink px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-cream">
+              AI
+            </span>
+          )}
+          {language && <LanguageFlag language={language} className="text-base" />}
+        </div>
         {completed && (
           <span className="ml-auto flex items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-[10px] font-semibold text-accent-brand">
             <Check className="h-3 w-3" strokeWidth={3} aria-hidden />

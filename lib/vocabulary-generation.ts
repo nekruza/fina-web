@@ -133,6 +133,7 @@ export function lessonFromWords(input: {
   topic: string;
   difficulty: WordDifficulty;
   words: VocabularyWord[];
+  language?: LanguageId;
 }): Lesson {
   return {
     id: input.id,
@@ -144,5 +145,6 @@ export function lessonFromWords(input: {
     completed: false,
     emoji: "🤖",
     vocabularyWords: input.words,
+    ...(input.language && { language: input.language }),
   };
 }

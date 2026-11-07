@@ -89,6 +89,8 @@ export default function LessonsPage() {
               lesson={lesson}
               href={hrefFor(lesson)}
               completed={isCompleted(lesson)}
+              // Predefined lessons are always in the learner's language; older generated ones never recorded theirs.
+              language={lesson.language ?? (lesson.isUserGenerated ? undefined : targetLanguage)}
               onDelete={lesson.isUserGenerated ? () => setPendingDelete(lesson) : undefined}
             />
           ))}

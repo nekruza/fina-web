@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
     }
 
     const words = parseGeneratedWords(fullText, topic, difficulty);
-    const lesson = lessonFromWords({ id: crypto.randomUUID(), topic, difficulty, words });
+    const lesson = lessonFromWords({ id: crypto.randomUUID(), topic, difficulty, words, language });
     const supabaseId = await saveGeneratedLesson(supabase, user.id, lesson, topic.trim().toLowerCase(), difficulty);
 
     return NextResponse.json({

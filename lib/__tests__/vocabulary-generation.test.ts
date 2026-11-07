@@ -205,6 +205,11 @@ describe("lessonFromWords", () => {
     expect(lesson.completed).toBe(false);
   });
 
+  it("records the language the lesson was generated in", () => {
+    const lesson = lessonFromWords({ id: "abc", topic: "greetings", difficulty: "easy", words, language: "english_uk" });
+    expect(lesson.language).toBe("english_uk");
+  });
+
   it.each([
     ["easy", "Beginner"],
     ["medium", "Intermediate"],
