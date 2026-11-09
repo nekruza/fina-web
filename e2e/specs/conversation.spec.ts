@@ -1,4 +1,4 @@
-import { test, expect, analysisFixture, hintsFixture, usageFixture } from "../support/test";
+import { test, expect, analysisFixture, hintsFixture, profileFixture, usageFixture } from "../support/test";
 import { signIn } from "../support/auth";
 
 /**
@@ -84,9 +84,7 @@ test.describe("running a conversation", () => {
 
     await page.getByRole("button", { name: "End Session" }).click();
     await expect(page.getByRole("heading", { name: "End conversation" })).toBeVisible();
-    await expect(
-      page.getByText("Your conversation will be saved and analysed.")
-    ).toBeVisible();
+    await expect(page.getByText("We'll analyze your conversation.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Cancel" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Complete" })).toBeVisible();
   });
@@ -104,6 +102,51 @@ test.describe("running a conversation", () => {
     await expect(page.getByText("Fluency")).toBeVisible();
     await expect(page.getByText("Grammar")).toBeVisible();
     await expect(page.getByText(/3\s*days?\s*streak/)).toBeVisible();
+  });
+
+  async function finishAfterGreeting(page: import("@playwright/test").Page) {
+    await start(page);
+    // The tutor's greeting is in the transcript once it's the learner's turn.
+    await expect(page.getByRole("button", { name: "Type a message" })).toBeEnabled({ timeout: 15_000 });
+    await page.getByRole("button", { name: "End Session" }).click();
+    await page.getByRole("button", { name: "Complete" }).click();
+  }
+
+  const putsTo = (api: { calls: (s: string) => Array<{ method: string; body: string | null }> }) =>
+    api.calls("/api/conversations/e2e-conv-1").filter((c) => c.method === "PUT");
+
+  test("with saving off, the results show the transcript and offer to keep it", async ({ page, api }) => {
+    await finishAfterGreeting(page);
+
+    await expect(page.getByRole("heading", { name: "Transcript" })).toBeVisible();
+    await expect(page.getByRole("list", { name: "Transcript" })).toContainText("¡Hola! Bienvenido");
+    await expect(page.getByText("This transcript disappears when you leave this page.")).toBeVisible();
+    expect(putsTo(api)).toHaveLength(0);
+
+    await page.getByRole("button", { name: "Keep my transcripts" }).click();
+
+    await expect(page.getByText(/Saved\. Read it again anytime in/)).toBeVisible();
+    const patch = api.calls("/api/profile").find((c) => c.method === "PATCH");
+    expect(JSON.parse(patch?.body ?? "{}")).toEqual({ saveTranscripts: true });
+    await expect.poll(() => putsTo(api).length).toBeGreaterThan(0);
+    expect(putsTo(api)[0].body).toContain("¡Hola! Bienvenido");
+  });
+
+  test("with saving on, the transcript and its feedback are saved without asking", async ({ page, api }) => {
+    await page.route("**/api/profile", (r) =>
+      r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(profileFixture({ saveTranscripts: true })) })
+    );
+
+    await page.goto(ROLEPLAY_URL);
+    await page.getByRole("button", { name: "Start conversation" }).click();
+    await expect(page.getByRole("button", { name: "Type a message" })).toBeEnabled({ timeout: 15_000 });
+    await page.getByRole("button", { name: "End Session" }).click();
+    await expect(page.getByText("We'll analyze your conversation and save the transcript.")).toBeVisible();
+    await page.getByRole("button", { name: "Complete" }).click();
+
+    await expect(page.getByText(/Saved\. Read it again anytime in/)).toBeVisible();
+    await expect.poll(() => putsTo(api).some((c) => (c.body ?? "").includes('"analysis"'))).toBe(true);
+    expect(putsTo(api)[0].body).toContain("¡Hola! Bienvenido");
   });
 
   test("a typed reply is sent to the tutor in place of speech", async ({ page, api }) => {

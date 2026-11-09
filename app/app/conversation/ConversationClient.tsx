@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -9,9 +9,14 @@ import { Languages, Lightbulb, Loader2, Mic } from "lucide-react";
 import { VoiceCallView } from "@/components/practice/VoiceCallView";
 import { AnalysisResults } from "@/components/conversation/AnalysisResults";
 import { StreakWeek } from "@/components/conversation/StreakWeek";
+import {
+  CallTranscript,
+  TranscriptSaveNotice,
+  type TranscriptSaveStatus,
+} from "@/components/conversation/CallTranscript";
 import { ProUpgradeDialog } from "@/components/ProUpgradeDialog";
-import { useProfile } from "@/lib/queries/profile";
-import { useConversationUsage } from "@/lib/queries/conversations";
+import { useProfile, useUpdateProfile } from "@/lib/queries/profile";
+import { putTranscript, useConversationUsage } from "@/lib/queries/conversations";
 import { QUERY_KEYS } from "@/lib/queries/keys";
 import { createClient } from "@/lib/supabase/client";
 import { getCustomRoleplay } from "@/lib/db/customRoleplays";
@@ -68,6 +73,12 @@ export function ConversationClient({ roleplayId, customId, tutorId: tutorParam }
   const [streakLoading, setStreakLoading] = useState(false);
   const completingRef = useRef(false);
 
+  const updateProfile = useUpdateProfile();
+  const [transcript, setTranscript] = useState<Message[]>([]);
+  const [saveStatus, setSaveStatus] = useState<TranscriptSaveStatus>("off");
+  /** The call whose stored transcript already has its analysis. */
+  const analysisSavedFor = useRef<string | null>(null);
+
   // ── Scenario ──
   const customQuery = useQuery({
     queryKey: [...QUERY_KEYS.customRoleplays, customId],
@@ -97,6 +108,12 @@ export function ConversationClient({ roleplayId, customId, tutorId: tutorParam }
   const isPro = usageQuery.data?.isPro ?? profile?.pro.isPro ?? false;
   const freeRemaining =
     usageQuery.data?.freeRemaining ?? profile?.usage.freeConversationsRemaining ?? 0;
+  const saveTranscripts = profile?.saveTranscripts ?? false;
+
+  const transcriptMeta = useMemo(
+    () => ({ roleplayId: scenario.id, roleplayTitle: scenario.title, tutorId, language, level }),
+    [scenario.id, scenario.title, tutorId, language, level]
+  );
 
   // ── Start ──
   const handleStart = useCallback(async () => {
@@ -160,6 +177,18 @@ export function ConversationClient({ roleplayId, customId, tutorId: tutorParam }
       setAnalysisLoading(true);
       setStreak(null);
       setStreakLoading(true);
+      setTranscript(messages);
+      analysisSavedFor.current = null;
+
+      // Save the transcript straight away, so a slow or failed feedback call
+      // can never lose it. The analysis is added once it arrives (see below).
+      const canSave = saveTranscripts && !!sessionId && messages.length > 0;
+      setSaveStatus(canSave ? "saving" : "off");
+      if (canSave) {
+        void putTranscript(sessionId, { ...transcriptMeta, durationSeconds: seconds, messages }).then((ok) =>
+          setSaveStatus(ok ? "saved" : "error")
+        );
+      }
 
       const userMessageCount = messages.filter((m) => m.role === "user" && m.content.trim()).length;
 
@@ -216,7 +245,60 @@ export function ConversationClient({ roleplayId, customId, tutorId: tutorParam }
         overall_score: result?.overall ?? null,
       });
     },
-    [sessionId, language, level, scenario.id, tutorId, queryClient]
+    [sessionId, language, level, scenario.id, tutorId, queryClient, saveTranscripts, transcriptMeta]
+  );
+
+  // Once the transcript is stored and feedback has arrived, store the feedback
+  // with it so the history page can mark the lines that need work.
+  useEffect(() => {
+    if (saveStatus !== "saved" || !analysis || !sessionId || analysisSavedFor.current === sessionId) return;
+    analysisSavedFor.current = sessionId;
+    void putTranscript(sessionId, { ...transcriptMeta, durationSeconds, messages: transcript, analysis });
+  }, [saveStatus, analysis, sessionId, transcriptMeta, durationSeconds, transcript]);
+
+  // "Keep my transcripts" on the results screen: switch saving on, then save this call.
+  const handleKeepTranscript = useCallback(async () => {
+    if (!sessionId) return;
+    setSaveStatus("saving");
+    const turningOn = !saveTranscripts;
+    if (turningOn) {
+      try {
+        await updateProfile.mutateAsync({ saveTranscripts: true });
+      } catch {
+        setSaveStatus("error");
+        return;
+      }
+    }
+    const withAnalysis = analysisLoading ? {} : { analysis };
+    const ok = await putTranscript(sessionId, {
+      ...transcriptMeta,
+      durationSeconds,
+      messages: transcript,
+      ...withAnalysis,
+    });
+    if (ok && !analysisLoading && analysis) analysisSavedFor.current = sessionId;
+    setSaveStatus(ok ? "saved" : "error");
+    if (ok && turningOn) toast.success("Transcript saving is on. You can turn it off in Settings.");
+    if (ok) queryClient.invalidateQueries({ queryKey: QUERY_KEYS.conversations });
+  }, [
+    sessionId,
+    saveTranscripts,
+    updateProfile,
+    analysisLoading,
+    analysis,
+    transcriptMeta,
+    durationSeconds,
+    transcript,
+    queryClient,
+  ]);
+
+  // Closing the tab or leaving the page mid-call: keep what was said so far.
+  const handleLeave = useCallback(
+    (messages: Message[], seconds: number) => {
+      if (!saveTranscripts || !sessionId) return;
+      void putTranscript(sessionId, { ...transcriptMeta, durationSeconds: seconds, messages }, { keepalive: true });
+    },
+    [saveTranscripts, sessionId, transcriptMeta]
   );
 
   const handlePracticeAgain = useCallback(() => {
@@ -225,6 +307,8 @@ export function ConversationClient({ roleplayId, customId, tutorId: tutorParam }
     setAnalysis(null);
     setStreak(null);
     setDurationSeconds(0);
+    setTranscript([]);
+    setSaveStatus("off");
     setPhase("setup");
   }, []);
 
@@ -257,6 +341,8 @@ export function ConversationClient({ roleplayId, customId, tutorId: tutorParam }
         sessionId={sessionId}
         onComplete={handleComplete}
         onReset={handlePracticeAgain}
+        onLeave={handleLeave}
+        saveTranscripts={saveTranscripts}
       />
     );
   }
@@ -280,6 +366,16 @@ export function ConversationClient({ roleplayId, customId, tutorId: tutorParam }
         </header>
 
         <AnalysisResults analysis={analysis} isLoading={analysisLoading} durationSeconds={durationSeconds} />
+        <CallTranscript
+          messages={transcript}
+          tutorName={tutor.name}
+          corrections={analysisLoading ? null : analysis?.corrections ?? []}
+          notice={
+            transcript.length > 0 && sessionId ? (
+              <TranscriptSaveNotice status={saveStatus} onKeep={handleKeepTranscript} />
+            ) : null
+          }
+        />
         <StreakWeek
           currentStreak={streakValue.current}
           weeklyActivity={streakValue.weeklyActivity}

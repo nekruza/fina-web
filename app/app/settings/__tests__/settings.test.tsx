@@ -38,6 +38,12 @@ jest.mock("@/components/roleplay/TutorPicker", () => ({
   TutorPicker: () => <div data-testid="tutor-picker" />,
 }));
 
+jest.mock("@/components/settings/TranscriptSavingSetting", () => ({
+  TranscriptSavingSetting: ({ enabled }: { enabled: boolean }) => (
+    <div data-testid="transcript-saving">{enabled ? "on" : "off"}</div>
+  ),
+}));
+
 const { useRouter, useSearchParams } = jest.requireMock("next/navigation");
 const { toast } = jest.requireMock("sonner");
 const { useProfile, useUpdateProfile } = jest.requireMock("@/lib/queries/profile");
@@ -54,6 +60,7 @@ function profile(overrides: Partial<ProfileSummary> = {}): ProfileSummary {
     dailyGoalMinutes: 10,
     learningMotivation: null,
     onboarded: true,
+    saveTranscripts: false,
     streak: { current: 0, lastConversationDate: null, weeklyActivity: [] },
     studyPlan: { startDate: null, completedDays: [] },
     stats: { conversationsCompleted: 0, avgOverallScore: null, lessonsCompleted: 0, favoriteWords: 0, generatedLessons: 0 },
@@ -100,6 +107,15 @@ describe("rendering", () => {
     expect(screen.getByText("Google Gemini")).toBeInTheDocument();
     expect(screen.getByText("Inworld AI")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "View Privacy Policy" })).toHaveAttribute("href", "/privacy");
+  });
+
+  it("puts the transcript-saving switch in AI & privacy with the learner's current choice", () => {
+    setup({ saveTranscripts: true });
+    render(<SettingsPage />);
+
+    const section = document.getElementById("ai-privacy")!;
+    expect(section).toContainElement(screen.getByTestId("transcript-saving"));
+    expect(screen.getByTestId("transcript-saving")).toHaveTextContent("on");
   });
 
   it("shows a loading state while the profile is loading", () => {

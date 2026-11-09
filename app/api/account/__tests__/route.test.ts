@@ -26,6 +26,7 @@ const { getStripe } = jest.requireMock("@/lib/stripe");
 const USER = { id: "user-1", email: "jane@example.com" };
 
 const DELETE_ORDER = [
+  "saved_conversations",
   "generated_lessons",
   "custom_roleplays",
   "favorite_words",

@@ -78,5 +78,59 @@ test.describe("progress", () => {
     await expect(page.getByText(analysis.summary)).toBeVisible();
     await expect(page.locator("del", { hasText: "Yo tiene hambre" })).toBeVisible();
     await expect(page.locator("ins", { hasText: "Yo tengo hambre" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Read transcript" })).toHaveAttribute(
+      "href",
+      "/app/progress/e2e-session-1"
+    );
+  });
+
+  test("asks the learner to turn saving on when nothing is saved", async ({ page }) => {
+    await page.goto("/app/progress");
+
+    await expect(page.getByText("No saved conversations yet")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Turn on in Settings" })).toHaveAttribute(
+      "href",
+      "/app/settings#ai-privacy"
+    );
+  });
+
+  test("opens a saved transcript with the hard spots marked", async ({ page }) => {
+    const analysis = analysisFixture();
+    await page.route("**/api/conversations/e2e-session-1", (r) =>
+      r.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          conversation: {
+            id: "e2e-session-1",
+            roleplayId: "food-restaurant-1",
+            roleplayTitle: "Ordering at Restaurant",
+            tutorId: "luna",
+            language: "spanish",
+            level: "intermediate",
+            status: "completed",
+            startedAt: "2026-09-14T10:00:00.000Z",
+            completedAt: "2026-09-14T10:05:00.000Z",
+            durationSeconds: 300,
+            overallScore: analysis.overall,
+            analysis,
+            messageCount: 1,
+            messages: [
+              { role: "assistant", content: "¡Bienvenido! ¿Qué desea?" },
+              { role: "user", content: "Yo tiene hambre." },
+            ],
+          },
+        }),
+      })
+    );
+
+    await page.goto("/app/progress/e2e-session-1");
+
+    await expect(page.getByRole("heading", { level: 1, name: "Ordering at Restaurant" })).toBeVisible();
+    const transcript = page.getByRole("list", { name: "Transcript" });
+    await expect(transcript).toContainText("¡Bienvenido! ¿Qué desea?");
+    await expect(transcript.getByRole("listitem").nth(1)).toContainText("Worth fixing");
+    await expect(transcript.getByRole("listitem").nth(1)).toContainText("Yo tengo hambre");
+    await expect(page.getByRole("button", { name: "Delete transcript" })).toBeVisible();
   });
 });

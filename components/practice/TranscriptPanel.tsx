@@ -5,6 +5,7 @@ import { MessageSquare, Loader2, X, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
 import type { Message } from "@/lib/types/conversation";
 import { getLanguage, type LanguageId } from "@/lib/languages";
+import { formatTranscript } from "@/lib/transcripts";
 
 interface TranscriptPanelProps {
   messages: Message[];
@@ -51,9 +52,7 @@ export const TranscriptPanel: FC<TranscriptPanelProps> = ({
   useEffect(() => () => clearTimeout(copiedTimer.current), []);
 
   const handleCopy = async () => {
-    const text = messages
-      .map((m) => `${m.role === "assistant" ? tutorName : "You"}: ${m.content}`)
-      .join("\n");
+    const text = formatTranscript(messages, tutorName);
     try {
       await navigator.clipboard.writeText(text);
       toast.success("Transcript copied");

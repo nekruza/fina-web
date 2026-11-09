@@ -1,4 +1,4 @@
-import { GET, POST, PATCH } from "../route";
+import { GET, POST, PATCH, DELETE } from "../route";
 import { createSupabaseMock, type SupabaseMockConfig } from "@/test-utils/supabase-mock";
 
 jest.mock("@/lib/supabase/server", () => ({ createClient: jest.fn() }));
@@ -273,14 +273,24 @@ describe("GET /api/conversations", () => {
     expect(res.status).toBe(401);
   });
 
-  it("returns an empty history without querying a missing conversation table", async () => {
+  it("returns the saved conversation history (empty when nothing is saved)", async () => {
     const mock = mockSupabase();
 
     const res = await GET(getReq("?limit=50"));
 
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({ sessions: [] });
-    expect(mock.callCountFor("conversation_sessions")).toBe(0);
+    expect(mock.builderFor("saved_conversations").eq).toHaveBeenCalledWith("user_id", USER.id);
+  });
+
+  it("returns 500 when history can't be loaded", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    listConversations.mockRejectedValueOnce(new Error("boom"));
+    mockSupabase();
+
+    const res = await GET(getReq());
+
+    expect(res.status).toBe(500);
   });
 
   it.each([
@@ -294,5 +304,32 @@ describe("GET /api/conversations", () => {
     await GET(getReq(query));
 
     expect(listConversations).toHaveBeenCalledWith(expect.anything(), USER.id, expected);
+  });
+});
+
+describe("DELETE /api/conversations", () => {
+  it("returns 401 for an anonymous caller", async () => {
+    mockSupabase({ user: null });
+    expect((await DELETE()).status).toBe(401);
+  });
+
+  it("deletes every saved transcript of the signed-in user", async () => {
+    const mock = mockSupabase();
+
+    const res = await DELETE();
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({ ok: true });
+    const b = mock.builderFor("saved_conversations");
+    expect(b.delete).toHaveBeenCalled();
+    expect(b.eq).toHaveBeenCalledWith("user_id", USER.id);
+  });
+
+  it("returns 500 when the delete fails", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    const mock = createSupabaseMock({ user: USER, tables: { saved_conversations: { error: { message: "boom" } } } });
+    createClient.mockResolvedValue(mock);
+
+    expect((await DELETE()).status).toBe(500);
   });
 });

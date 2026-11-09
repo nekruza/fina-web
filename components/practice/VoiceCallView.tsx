@@ -29,6 +29,7 @@ import { getTutorById, tutorVoice, type TutorId } from "@/lib/tutors"
 import { getLanguage, speechLocale, type LanguageId } from "@/lib/languages"
 import type { UserLevel } from "@/lib/levels"
 import { sseData } from "@/lib/sse"
+import { stripBeginMarker } from "@/lib/transcripts"
 
 interface VoiceCallViewProps {
 	roleplay: RoleplayScenario
@@ -40,19 +41,17 @@ interface VoiceCallViewProps {
 	sessionId: string | null
 	onComplete: (messages: Message[], durationSeconds: number) => void
 	onReset: () => void
+	/**
+	 * Called with what was said so far when the learner leaves without ending
+	 * the call (closes the tab or navigates away).
+	 */
+	onLeave?: (messages: Message[], durationSeconds: number) => void
+	/** Whether the learner keeps transcripts; changes the end-call wording. */
+	saveTranscripts?: boolean
 }
-
-const BEGIN_RE = /^\[BEGIN\]/i
 
 /** Wait this long after the last final transcript before auto-sending. */
 const AUTO_SEND_SILENCE_MS = 2000
-
-/** Drops the auto-sent "[BEGIN]" greeting trigger so it never reaches the UI, the analysis or the saved count. */
-function stripBeginMarker(msgs: Message[]): Message[] {
-	return msgs.filter(
-		(m) => !(m.role === "user" && BEGIN_RE.test(m.content.trim())),
-	)
-}
 
 /** User-facing explanation for a failed getUserMedia({ audio }) call. */
 function micErrorMessage(err: unknown): string {
@@ -100,6 +99,8 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 	sessionId,
 	onComplete,
 	onReset,
+	onLeave,
+	saveTranscripts = false,
 }) => {
 	const tutor = getTutorById(tutorId)
 	const voice = tutorVoice(tutor, language)
@@ -647,6 +648,7 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 	}, [timer, startListeningToUser])
 
 	const handleConfirmEnd = useCallback(() => {
+		leaveRef.current.ended = true
 		releaseMedia()
 		visualizer.stopAnalyser()
 		if (useRealtime) realtime.disconnect()
@@ -704,6 +706,34 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 	const visibleMessages = stripBeginMarker(
 		useRealtime ? realtime.messages : messages,
 	)
+
+	// ── Leaving mid-call ──
+	// Keep the latest transcript where the pagehide/unmount handlers can reach it,
+	// so a learner who closes the tab or navigates away still gets it saved.
+	const leaveRef = useRef({
+		onLeave,
+		messages: [] as Message[],
+		seconds: 0,
+		ended: false,
+	})
+	useEffect(() => {
+		leaveRef.current.onLeave = onLeave
+		leaveRef.current.messages = visibleMessages
+		leaveRef.current.seconds = timer.seconds
+	})
+	useEffect(() => {
+		const notifyLeave = () => {
+			const s = leaveRef.current
+			if (s.ended || !s.onLeave || s.messages.length === 0) return
+			s.onLeave(s.messages, s.seconds)
+		}
+		window.addEventListener("pagehide", notifyLeave)
+		return () => {
+			window.removeEventListener("pagehide", notifyLeave)
+			notifyLeave()
+		}
+	}, [])
+
 	const captionLastMsg = visibleMessages[visibleMessages.length - 1]
 	const captionInterim = convState === "listening" ? liveTranscript : ""
 	const videoCaption =
@@ -918,7 +948,11 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 			</div>
 
 			{showEndModal && (
-				<EndCallDialog onCancel={handleCancelEnd} onConfirm={handleConfirmEnd} />
+				<EndCallDialog
+					onCancel={handleCancelEnd}
+					onConfirm={handleConfirmEnd}
+					saveTranscripts={saveTranscripts}
+				/>
 			)}
 		</div>
 	)

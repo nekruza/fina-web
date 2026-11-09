@@ -28,6 +28,7 @@ export function profileFixture(overrides: Partial<ProfileSummary> = {}): Profile
     dailyGoalMinutes: 10,
     learningMotivation: "travel",
     onboarded: true,
+    saveTranscripts: false,
     streak: {
       current: 2,
       lastConversationDate: null,

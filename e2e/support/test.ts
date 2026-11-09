@@ -94,6 +94,13 @@ export const test = base.extend<{ api: ApiMock }>({
     await page.route("**/api/profile", (r) =>
       r.request().method() === "PATCH" ? jsonRoute(r, { ok: true }) : jsonRoute(r, profileFixture())
     );
+    // Saved transcripts. Registered before `/usage` because Playwright tries the
+    // most recently registered route first, so `/usage` keeps its own mock.
+    await page.route("**/api/conversations/*", (r) => {
+      const method = r.request().method();
+      if (method === "GET") return jsonRoute(r, { error: "Not found" }, 404);
+      return jsonRoute(r, { ok: true });
+    });
     await page.route("**/api/conversations/usage", (r) => jsonRoute(r, usageFixture(3, false)));
     await page.route("**/api/conversations", (r) => {
       const method = r.request().method();

@@ -23,8 +23,8 @@ export default function PrivacyPage() {
 	return (
 		<LegalDocument
 			title="Privacy Policy"
-			updated="October 2025"
-			updatedIso="2025-10"
+			updated="November 2026"
+			updatedIso="2026-11"
 		>
 			<LegalSection title="Introduction">
 				<p>
@@ -56,6 +56,13 @@ export default function PrivacyPage() {
 						<strong className="font-semibold text-ink">Voice Data:</strong>{" "}
 						Audio recordings when you use voice conversation features (processed
 						temporarily and not stored permanently)
+					</li>
+					<li>
+						<strong className="font-semibold text-ink">
+							Call Transcripts:
+						</strong>{" "}
+						The text of your practice calls and the feedback on them, only if
+						you turn on transcript saving in Settings (it is off by default)
 					</li>
 					<li>
 						<strong className="font-semibold text-ink">
@@ -147,8 +154,9 @@ export default function PrivacyPage() {
 					<Provider name="Supabase (Backend Infrastructure)">
 						<ProviderRow term="Who">Supabase Inc.</ProviderRow>
 						<ProviderRow term="What data is stored">
-							Your account information, learning progress, app settings, and
-							user preferences.
+							Your account information, learning progress, app settings, user
+							preferences, and the text of your call transcripts if you choose
+							to save them.
 						</ProviderRow>
 						<ProviderRow term="Purpose">
 							Securely store and manage your app data.
@@ -186,6 +194,12 @@ export default function PrivacyPage() {
 					account is active. Voice recordings are processed in real-time and are
 					not stored permanently. If you delete your account, your data will be
 					removed from our systems.
+				</p>
+				<p>
+					Call transcripts are stored only if you turn on transcript saving in
+					Settings. They are kept until you delete them, one at a time in
+					Progress or all at once in Settings, or until you delete your
+					account. Turning saving off stops new transcripts from being saved.
 				</p>
 			</LegalSection>
 

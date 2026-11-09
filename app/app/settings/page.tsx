@@ -11,6 +11,7 @@ import { LANGUAGES, type LanguageId } from "@/lib/languages";
 import { USER_LEVELS, type UserLevel } from "@/lib/levels";
 import { TutorPicker } from "@/components/roleplay/TutorPicker";
 import { AiPrivacySection } from "@/components/settings/AiPrivacySection";
+import { TranscriptSavingSetting } from "@/components/settings/TranscriptSavingSetting";
 import { VoucherRedeemForm } from "@/components/settings/VoucherRedeemForm";
 import type { TutorId } from "@/lib/tutors";
 import { isBillingPlan, type BillingPlan } from "@/lib/billing";
@@ -385,7 +386,9 @@ export default function SettingsPage() {
           </button>
         </section>
 
-        <AiPrivacySection />
+        <AiPrivacySection>
+          <TranscriptSavingSetting enabled={profile.saveTranscripts} />
+        </AiPrivacySection>
 
         <section id="subscription" className="scroll-mt-24 rounded-2xl border border-line bg-surface p-6 sm:p-8">
           <h2 className="font-display text-xl text-ink">Subscription</h2>

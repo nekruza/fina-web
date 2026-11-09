@@ -63,6 +63,7 @@ export function buildProfileSummary(input: BuildProfileSummaryInput): ProfileSum
     dailyGoalMinutes,
     learningMotivation: row?.learning_motivation ?? null,
     onboarded: Boolean(row?.target_language),
+    saveTranscripts: row?.save_transcripts === true,
     streak: {
       current: row?.current_streak ?? 0,
       lastConversationDate: row?.last_conversation_date ?? null,

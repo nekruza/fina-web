@@ -72,6 +72,13 @@ export async function PATCH(req: NextRequest) {
     updates.target_language = body.targetLanguage;
   }
 
+  if ("saveTranscripts" in body) {
+    if (typeof body.saveTranscripts !== "boolean") {
+      return NextResponse.json({ error: "Invalid saveTranscripts" }, { status: 400 });
+    }
+    updates.save_transcripts = body.saveTranscripts;
+  }
+
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
   }

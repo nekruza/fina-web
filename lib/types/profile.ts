@@ -24,6 +24,8 @@ export interface ProfileRow {
   learning_motivation: string | null;
   daily_goal_minutes?: number | null;
   ai_consent_accepted?: boolean | null;
+  /** Opt-in: keep each call's transcript in saved_conversations. Defaults to false. */
+  save_transcripts?: boolean | null;
   study_plan_completed_days: string | null;
   study_plan_start_date: string | null;
   /** Legacy web fields retained for compatibility with older fixtures only. */
@@ -49,6 +51,8 @@ export interface ProfileSummary {
   dailyGoalMinutes: number;
   learningMotivation: string | null;
   onboarded: boolean;
+  /** Whether call transcripts are kept (opt-in). */
+  saveTranscripts: boolean;
   streak: { current: number; lastConversationDate: string | null; weeklyActivity: boolean[] };
   studyPlan: { startDate: string | null; completedDays: number[] };
   stats: {
@@ -83,5 +87,6 @@ export type ProfileUpdate = Partial<
     | "study_plan_completed_days"
     | "study_plan_start_date"
     | "ai_consent_accepted"
+    | "save_transcripts"
   >
 >;

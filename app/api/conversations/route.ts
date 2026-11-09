@@ -1,56 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser } from "@/lib/require-user";
 import { getProfileRow, updateStreak } from "@/lib/db/profile";
-import { createConversation, completeConversation, listConversations, countConversations } from "@/lib/db/conversations";
+import {
+  createConversation,
+  completeConversation,
+  listConversations,
+  countConversations,
+  deleteAllSavedConversations,
+} from "@/lib/db/conversations";
 import { isLanguageId } from "@/lib/languages";
 import { isUserLevel } from "@/lib/levels";
 import { isTutorId } from "@/lib/tutors";
 import { hasProAccess, FREE_CONVERSATIONS } from "@/lib/billing";
 import { computeStreakUpdate, isValidDateString, localDateString, parseWeeklyActivity, type StreakState } from "@/lib/streak";
-import type { LanguageAnalysis } from "@/lib/types/conversation";
+import { sanitizeAnalysis } from "@/lib/transcripts";
 
 const ROLEPLAY_TITLE_MAX = 120;
 
 function nonEmptyString(v: unknown): v is string {
   return typeof v === "string" && v.trim().length > 0;
-}
-
-function clampScore(v: unknown): number {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return 0;
-  return Math.min(100, Math.max(0, n));
-}
-
-const MAX_STRENGTHS = 3;
-const MAX_CORRECTIONS = 5;
-
-function sanitizeAnalysis(input: unknown): LanguageAnalysis | null {
-  if (input == null || typeof input !== "object" || Array.isArray(input)) return null;
-  const a = input as Record<string, unknown>;
-
-  const strengths = Array.isArray(a.strengths) ? a.strengths.slice(0, MAX_STRENGTHS).map((s) => String(s)) : [];
-  const corrections = Array.isArray(a.corrections)
-    ? a.corrections.slice(0, MAX_CORRECTIONS).map((c) => {
-        const rec = (c ?? {}) as Record<string, unknown>;
-        return {
-          original: String(rec.original ?? ""),
-          corrected: String(rec.corrected ?? ""),
-          explanation: String(rec.explanation ?? ""),
-        };
-      })
-    : [];
-
-  return {
-    overall: clampScore(a.overall),
-    fluency: clampScore(a.fluency),
-    grammar: clampScore(a.grammar),
-    vocabulary: clampScore(a.vocabulary),
-    engagement: clampScore(a.engagement),
-    relevancy: clampScore(a.relevancy),
-    summary: typeof a.summary === "string" ? a.summary : "",
-    strengths,
-    corrections,
-  };
 }
 
 export async function POST(req: NextRequest) {
@@ -144,7 +112,25 @@ export async function GET(req: NextRequest) {
   const rawLimit = parseInt(searchParams.get("limit") ?? "20", 10);
   const limit = Number.isFinite(rawLimit) ? Math.min(50, Math.max(1, rawLimit)) : 20;
 
-  const sessions = await listConversations(supabase, user.id, limit);
+  try {
+    const sessions = await listConversations(supabase, user.id, limit);
+    return NextResponse.json({ sessions });
+  } catch (err) {
+    console.error("[api/conversations] history error:", err);
+    return NextResponse.json({ error: "Failed to load history" }, { status: 500 });
+  }
+}
 
-  return NextResponse.json({ sessions });
+/** Deletes every saved transcript of the signed-in learner (Settings → AI & privacy). */
+export async function DELETE() {
+  const { supabase, user, response } = await requireUser();
+  if (!user) return response;
+
+  try {
+    await deleteAllSavedConversations(supabase, user.id);
+  } catch (err) {
+    console.error("[api/conversations] delete-all error:", err);
+    return NextResponse.json({ error: "Failed to delete transcripts" }, { status: 500 });
+  }
+  return NextResponse.json({ ok: true });
 }

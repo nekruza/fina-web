@@ -1,6 +1,7 @@
 /** @jest-environment jsdom */
 import "@testing-library/jest-dom"
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import type { ComponentProps } from "react"
 import { VoiceCallView } from "../VoiceCallView"
 
 jest.mock("@/lib/hooks/useInworldRealtime", () => ({
@@ -32,15 +33,20 @@ jest.mock("../ControlBar", () => ({
 	ControlBar: ({
 		onToggleTypedInput,
 		onHint,
+		onStop,
 		typedInputOpen,
 		typedInputDisabled,
 	}: {
 		onToggleTypedInput: () => void
 		onHint: () => void
+		onStop: () => void
 		typedInputOpen: boolean
 		typedInputDisabled?: boolean
 	}) => (
 		<>
+			<button type="button" aria-label="End call" onClick={onStop}>
+				End call
+			</button>
 			<button
 				type="button"
 				aria-label="Type a message"
@@ -69,7 +75,10 @@ const stopTrack = jest.fn()
 const getUserMedia = jest.fn()
 const originalRealtimeFlag = process.env.NEXT_PUBLIC_INWORLD_REALTIME_ENABLED
 
-function renderCall(sessionId: string | null = "session-1") {
+function renderCall(
+	sessionId: string | null = "session-1",
+	extra: Partial<ComponentProps<typeof VoiceCallView>> = {},
+) {
 	const onReset = jest.fn()
 	const call = () => (
 		<VoiceCallView
@@ -92,10 +101,15 @@ function renderCall(sessionId: string | null = "session-1") {
 			sessionId={sessionId}
 			onComplete={jest.fn()}
 			onReset={onReset}
+			{...extra}
 		/>
 	)
 	const view = render(call())
-	return { onReset, rerender: () => view.rerender(call()) }
+	return {
+		onReset,
+		rerender: () => view.rerender(call()),
+		unmount: view.unmount,
+	}
 }
 
 beforeEach(() => {
@@ -249,4 +263,92 @@ it("includes the conversation session in hint requests", async () => {
 	expect(url).toBe("/api/ai/voice")
 	expect(body.isHint).toBe(true)
 	expect(body.sessionId).toBe("session-1")
+})
+
+describe("leaving mid-call", () => {
+	const said = [
+		{ role: "user", content: "[BEGIN]" },
+		{ role: "assistant", content: "Hi! What can I get you?" },
+		{ role: "user", content: "A latte, please" },
+	]
+
+	beforeEach(() => {
+		useInworldRealtime.mockReturnValue({
+			connect,
+			disconnect,
+			messages: said,
+			agentState: "listening",
+			agentAudioStream: null,
+			cancelResponse: jest.fn(),
+			muteMic: jest.fn(),
+		})
+		useTimer.mockReturnValue({
+			seconds: 42,
+			formatted: "00:42",
+			start: jest.fn(),
+			pause,
+		})
+	})
+
+	it("hands over what was said when the page is closed", async () => {
+		const onLeave = jest.fn()
+		renderCall("session-1", { onLeave })
+		await waitFor(() => expect(connect).toHaveBeenCalled())
+
+		window.dispatchEvent(new Event("pagehide"))
+
+		expect(onLeave).toHaveBeenCalledWith(said.slice(1), 42)
+	})
+
+	it("hands it over when the learner navigates away inside the app", async () => {
+		const onLeave = jest.fn()
+		const { unmount } = renderCall("session-1", { onLeave })
+		await waitFor(() => expect(connect).toHaveBeenCalled())
+
+		unmount()
+
+		expect(onLeave).toHaveBeenCalledWith(said.slice(1), 42)
+	})
+
+	it("does nothing when nothing was said", async () => {
+		useInworldRealtime.mockReturnValue({
+			connect,
+			disconnect,
+			messages: [{ role: "user", content: "[BEGIN]" }],
+			agentState: "listening",
+			agentAudioStream: null,
+		})
+		const onLeave = jest.fn()
+		const { unmount } = renderCall("session-1", { onLeave })
+		await waitFor(() => expect(connect).toHaveBeenCalled())
+
+		unmount()
+
+		expect(onLeave).not.toHaveBeenCalled()
+	})
+
+	it("does not fire after the call was ended normally", async () => {
+		const onLeave = jest.fn()
+		const onComplete = jest.fn()
+		const { unmount } = renderCall("session-1", { onLeave, onComplete })
+		await waitFor(() => expect(connect).toHaveBeenCalled())
+
+		fireEvent.click(screen.getByRole("button", { name: "End call" }))
+		fireEvent.click(await screen.findByRole("button", { name: "Complete" }))
+		unmount()
+
+		expect(onComplete).toHaveBeenCalledWith(said.slice(1), 42)
+		expect(onLeave).not.toHaveBeenCalled()
+	})
+
+	it("tells the learner the transcript will be saved only when saving is on", async () => {
+		renderCall("session-1", { saveTranscripts: true })
+		await waitFor(() => expect(connect).toHaveBeenCalled())
+
+		fireEvent.click(screen.getByRole("button", { name: "End call" }))
+
+		expect(
+			await screen.findByText("We'll analyze your conversation and save the transcript."),
+		).toBeInTheDocument()
+	})
 })

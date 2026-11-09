@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ChevronDown, Flame, MessageSquare, Star, BookOpen, Heart, Sparkles } from "lucide-react";
+import { ChevronDown, ChevronRight, Flame, MessageSquare, Star, BookOpen, Heart, Sparkles } from "lucide-react";
 import { useProfile } from "@/lib/queries/profile";
 import { useConversations } from "@/lib/queries/conversations";
 import { StreakCard } from "@/components/home/StreakCard";
@@ -15,11 +15,15 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
+const ctaClass =
+  "mt-4 inline-flex items-center justify-center rounded-full bg-ink px-6 py-3 text-sm font-semibold text-cream transition hover:bg-ink/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand";
+
 /**
  * Stats + conversation history. Ported from the mobile progress surfaces
- * (streak, stat tiles) plus a new expandable conversation log the mobile app
- * didn't have — each row expands to show the stored analysis summary and
- * corrections (same red-pen treatment as `AnalysisResults`).
+ * (streak, stat tiles) plus a conversation log the mobile app didn't have.
+ * History holds the calls whose transcripts the learner chose to keep; each
+ * row expands to the stored summary and corrections (same red-pen treatment
+ * as `AnalysisResults`) and links to the full transcript.
  */
 export default function ProgressPage() {
   const { data: profile, isLoading: profileLoading } = useProfile();
@@ -78,16 +82,27 @@ export default function ProgressPage() {
           </p>
         ) : sessions.length === 0 ? (
           <div className="mt-6 flex flex-col items-center rounded-3xl border border-line bg-surface px-6 py-12 text-center">
-            <p className="text-base text-ink">Conversation history isn’t stored yet</p>
-            <p className="mt-2 max-w-sm text-sm text-sub">
-              Your streak is saved to your profile while conversation results remain available during the current practice session.
-            </p>
-            <Link
-              href="/app/roleplay"
-              className="mt-4 inline-flex items-center justify-center rounded-full bg-ink px-6 py-3 text-sm font-semibold text-cream transition hover:bg-ink/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"
-            >
-              Start your first conversation
-            </Link>
+            <p className="text-base text-ink">No saved conversations yet</p>
+            {profile?.saveTranscripts ? (
+              <>
+                <p className="mt-2 max-w-sm text-sm text-sub">
+                  Finish a conversation and its transcript will show up here, so you can read it again.
+                </p>
+                <Link href="/app/roleplay" className={ctaClass}>
+                  Start a conversation
+                </Link>
+              </>
+            ) : (
+              <>
+                <p className="mt-2 max-w-sm text-sm text-sub">
+                  Turn on transcript saving to keep your conversations here. You can read them again to find new
+                  words and see where you got stuck.
+                </p>
+                <Link href="/app/settings#ai-privacy" className={ctaClass}>
+                  Turn on in Settings
+                </Link>
+              </>
+            )}
           </div>
         ) : (
           <ul className="mt-4 divide-y divide-line rounded-[1.5rem] border border-line bg-surface">
@@ -123,10 +138,12 @@ export default function ProgressPage() {
                     />
                   </button>
 
-                  {isOpen && session.analysis && (
+                  {isOpen && (
                     <div className="border-t border-line bg-cream/50 px-4 py-4 sm:px-5">
-                      <p className="text-sm leading-relaxed text-ink">{session.analysis.summary}</p>
-                      {session.analysis.corrections.length > 0 && (
+                      {session.analysis?.summary && (
+                        <p className="text-sm leading-relaxed text-ink">{session.analysis.summary}</p>
+                      )}
+                      {session.analysis && session.analysis.corrections.length > 0 && (
                         <ul className="mt-3 space-y-3">
                           {session.analysis.corrections.map((c, i) => (
                             <li key={i}>
@@ -140,6 +157,13 @@ export default function ProgressPage() {
                           ))}
                         </ul>
                       )}
+                      <Link
+                        href={`/app/progress/${session.id}`}
+                        className="mt-3 inline-flex min-h-10 items-center gap-1 text-sm font-semibold text-ink underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"
+                      >
+                        Read transcript
+                        <ChevronRight className="h-4 w-4" aria-hidden />
+                      </Link>
                     </div>
                   )}
                 </li>
