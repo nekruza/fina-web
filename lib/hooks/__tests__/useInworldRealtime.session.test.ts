@@ -401,6 +401,22 @@ describe("server events", () => {
     expect(result.current.error).toBe("Your tutor couldn’t respond. Please start a new conversation.");
   });
 
+  // A cancel can cross with the response finishing on the server; the
+  // provider then reports there was nothing to cancel. That is harmless.
+  it.each([
+    [{ type: "invalid_request_error", code: "response_cancel_not_active", message: "Cancellation failed: no active response found" }],
+    [{ message: "Cancellation failed: no active response found" }],
+  ])("ignores the provider's 'nothing to cancel' error (%p)", async (providerError) => {
+    const { result } = renderHook(() => useInworldRealtime());
+    const dc = await connected(result);
+    act(() => dc.deliver({ type: "input_audio_buffer.speech_started" }));
+
+    act(() => dc.deliver({ type: "error", error: providerError }));
+
+    expect(result.current.error).toBeNull();
+    expect(result.current.agentState).toBe("listening");
+  });
+
   it("clears the provider error on disconnect", async () => {
     const { result } = renderHook(() => useInworldRealtime());
     const dc = await connected(result);
@@ -651,6 +667,7 @@ describe("outgoing controls", () => {
   it("cancels the in-flight response", async () => {
     const { result } = renderHook(() => useInworldRealtime());
     const dc = await connected(result);
+    act(() => dc.deliver({ type: "response.created" }));
     dc.send.mockClear();
 
     act(() => result.current.cancelResponse());
@@ -660,9 +677,48 @@ describe("outgoing controls", () => {
     });
   });
 
+  // Cancelling with nothing in flight makes the provider send an `error`
+  // event, which used to end the call when the learner pressed End Session
+  // while the tutor was quiet.
+  it("does not send a cancel when no response is in progress", async () => {
+    const { result } = renderHook(() => useInworldRealtime());
+    const dc = await connected(result);
+    dc.send.mockClear();
+
+    act(() => result.current.cancelResponse());
+
+    expect(dc.send).not.toHaveBeenCalled();
+  });
+
+  it("does not send a cancel once the response has finished", async () => {
+    const { result } = renderHook(() => useInworldRealtime());
+    const dc = await connected(result);
+    act(() => dc.deliver({ type: "response.created" }));
+    act(() => dc.deliver({ type: "response.done", response: { status: "completed" } }));
+    dc.send.mockClear();
+
+    act(() => result.current.cancelResponse());
+    act(() => result.current.interrupt());
+
+    expect(dc.send).not.toHaveBeenCalled();
+  });
+
+  it("interrupt with nothing playing returns to idle without cancelling", async () => {
+    const { result } = renderHook(() => useInworldRealtime());
+    const dc = await connected(result);
+    act(() => dc.deliver({ type: "input_audio_buffer.speech_stopped" }));
+    dc.send.mockClear();
+
+    act(() => result.current.interrupt());
+
+    expect(dc.send).not.toHaveBeenCalled();
+    expect(result.current.agentState).toBe("idle");
+  });
+
   it("interrupt cancels and returns the agent to idle", async () => {
     const { result } = renderHook(() => useInworldRealtime());
     const dc = await connected(result);
+    act(() => dc.deliver({ type: "response.created" }));
     act(() => dc.deliver({ type: "response.output_audio.started" }));
     dc.send.mockClear();
 

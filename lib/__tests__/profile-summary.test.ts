@@ -60,6 +60,7 @@ describe("buildProfileSummary", () => {
       dailyGoalMinutes: 20,
       learningMotivation: "travel",
       onboarded: true,
+      saveTranscripts: false,
       streak: {
         current: 4,
         lastConversationDate: "2026-09-12",
@@ -71,6 +72,12 @@ describe("buildProfileSummary", () => {
       usage: { freeConversationsRemaining: 999, freeGenerationsRemaining: 999 },
       createdAt: "2026-08-01T00:00:00.000Z",
     });
+  });
+
+  it("reports transcript saving only when the learner switched it on", () => {
+    expect(buildProfileSummary(baseInput({ row: { ...ROW, save_transcripts: true } })).saveTranscripts).toBe(true);
+    expect(buildProfileSummary(baseInput({ row: { ...ROW, save_transcripts: null } })).saveTranscripts).toBe(false);
+    expect(buildProfileSummary(baseInput({ row: null })).saveTranscripts).toBe(false);
   });
 
   it("marks voucher-granted Pro as having no Stripe subscription", () => {

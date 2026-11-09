@@ -110,7 +110,7 @@ describe("validation", () => {
 
     await POST(translateRequest({ text: "Hello", targetLanguage: "klingon" }));
 
-    expect(streamLLM.mock.calls[0][0].systemPrompt).toContain("into English");
+    expect(streamLLM.mock.calls[0][0].systemPrompt).toContain("into American English");
   });
 });
 

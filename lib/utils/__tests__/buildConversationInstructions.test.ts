@@ -24,7 +24,7 @@ describe("buildConversationInstructions", () => {
     });
 
     expect(result).toContain(
-      "You are a friendly Spanish conversation partner helping the learner practise speaking Spanish."
+      "You are a friendly Spanish conversation partner helping the learner practice speaking Spanish."
     );
   });
 
@@ -41,7 +41,7 @@ describe("buildConversationInstructions", () => {
       },
     });
 
-    expect(result).toContain("You are a friendly English conversation partner");
+    expect(result).toContain("You are a friendly American English conversation partner");
     expect(result).not.toContain("playing AI");
   });
 
@@ -107,7 +107,7 @@ describe("buildConversationInstructions", () => {
     });
 
     expect(result).toContain(
-      'Start the conversation: when you receive "[BEGIN]", greet the learner in English and open the scene with a simple question.'
+      'Start the conversation: when you receive "[BEGIN]", greet the learner in American English and open the scene with a simple question.'
     );
   });
 });
@@ -167,5 +167,16 @@ describe("buildAnalysisPrompt", () => {
     expect(result).toContain("corrected");
     expect(result).toContain("explanation");
     expect(result).toContain("up to 5");
+  });
+
+  it("tells the model to use British English when the learner picks UK English", () => {
+    const result = buildConversationInstructions({
+      language: "english_uk",
+      level: "beginner",
+      tutorName: "Luna",
+    });
+
+    expect(result).toContain("Speak ONLY in British English");
+    expect(result).not.toContain("American");
   });
 });

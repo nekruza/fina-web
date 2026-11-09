@@ -5,6 +5,7 @@ import { getStripe } from "@/lib/stripe";
 
 /** Deleted in dependency order so no orphaned rows are left behind on partial failure. */
 const TABLES_TO_DELETE = [
+  "saved_conversations",
   "generated_lessons",
   "custom_roleplays",
   "favorite_words",

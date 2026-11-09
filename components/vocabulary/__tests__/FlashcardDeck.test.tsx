@@ -11,7 +11,11 @@ jest.mock("@/lib/hooks/usePronunciation", () => ({
 }));
 
 jest.mock("../Flashcard", () => ({
-  Flashcard: ({ word }: { word: { word: string } }) => <div data-testid="flashcard-face">{word.word}</div>,
+  Flashcard: ({ word, language }: { word: { word: string }; language?: string }) => (
+    <div data-testid="flashcard-face" data-language={language}>
+      {word.word}
+    </div>
+  ),
 }));
 
 const LESSON: Lesson = {
@@ -42,6 +46,18 @@ function renderDeck(overrides: Partial<React.ComponentProps<typeof FlashcardDeck
   };
   return { ...render(<FlashcardDeck {...props} />), props };
 }
+
+describe("card language", () => {
+  it("uses the language the lesson was generated in, not the profile's", () => {
+    renderDeck({ lesson: { ...LESSON, language: "spanish" }, language: "english" });
+    expect(screen.getByTestId("flashcard-face")).toHaveAttribute("data-language", "spanish");
+  });
+
+  it("falls back to the learner's language for lessons without one", () => {
+    renderDeck({ language: "english_uk" });
+    expect(screen.getByTestId("flashcard-face")).toHaveAttribute("data-language", "english_uk");
+  });
+});
 
 describe("navigation", () => {
   it("shows the first word and 1 of n on mount", () => {

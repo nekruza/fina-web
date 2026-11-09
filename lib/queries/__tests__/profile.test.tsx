@@ -19,6 +19,7 @@ const mockProfile: ProfileSummary = {
   dailyGoalMinutes: 10,
   learningMotivation: null,
   onboarded: true,
+  saveTranscripts: false,
   streak: { current: 2, lastConversationDate: "2026-01-01", weeklyActivity: [false, false, false, false, false, false, false] },
   studyPlan: { startDate: null, completedDays: [] },
   stats: { conversationsCompleted: 5, avgOverallScore: 80, lessonsCompleted: 3, favoriteWords: 4, generatedLessons: 1 },

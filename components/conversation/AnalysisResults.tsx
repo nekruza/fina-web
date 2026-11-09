@@ -113,7 +113,7 @@ export function AnalysisResults({ analysis, isLoading, durationSeconds }: Analys
       <section className={cardClass} aria-live="polite">
         <div className="flex items-start justify-between gap-4">
           <p className="max-w-sm text-base leading-relaxed text-ink">
-            {"We couldn't analyse this conversation, but it's saved and counts toward your streak."}
+            {"We couldn't analyze this conversation, but it still counts toward your streak."}
           </p>
           {durationBlock}
         </div>

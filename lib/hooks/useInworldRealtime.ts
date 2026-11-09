@@ -26,6 +26,12 @@ export interface UseInworldRealtimeReturn {
   interrupt: () => void;
 }
 
+/** The provider's reply to a `response.cancel` sent when nothing was in flight. */
+function isCancelNotActive(err: { message?: string; code?: string } | undefined): boolean {
+  if (!err) return false;
+  return err.code === "response_cancel_not_active" || /no active response/i.test(err.message ?? "");
+}
+
 export function useInworldRealtime(): UseInworldRealtimeReturn {
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +53,12 @@ export function useInworldRealtime(): UseInworldRealtimeReturn {
 
   const greetingDoneRef = useRef(false);
   const hybridModeRef = useRef(false);
+  /**
+   * True between response.created and response.done. Cancelling outside that
+   * window makes the provider reply with an `error` event, so cancels are only
+   * sent while a response is actually in flight.
+   */
+  const responseActiveRef = useRef(false);
 
   const handleDataChannelMessage = useCallback((event: MessageEvent) => {
     let parsed: Record<string, unknown>;
@@ -59,8 +71,14 @@ export function useInworldRealtime(): UseInworldRealtimeReturn {
     const type = parsed.type as string;
     console.log("[inworld event]", type, parsed);
 
+    if (type === "response.created") responseActiveRef.current = true;
+    if (type === "response.done") responseActiveRef.current = false;
+
     if (type === "error") {
-      const providerError = parsed.error as { message?: string } | undefined;
+      const providerError = parsed.error as { message?: string; code?: string } | undefined;
+      // A cancel that crosses with the response finishing on the server is
+      // answered with "nothing to cancel". The call is fine, so don't end it.
+      if (isCancelNotActive(providerError)) return;
       setError(providerError?.message ?? "Your tutor couldn’t respond. Please start a new conversation.");
       setAgentState("idle");
       return;
@@ -268,6 +286,7 @@ export function useInworldRealtime(): UseInworldRealtimeReturn {
     micStreamRef.current = null;
     greetingDoneRef.current = false;
     hybridModeRef.current = false;
+    responseActiveRef.current = false;
 
     setIsConnected(false);
     setError(null);
@@ -289,6 +308,7 @@ export function useInworldRealtime(): UseInworldRealtimeReturn {
   }, [sendEvent]);
 
   const cancelResponse = useCallback(() => {
+    if (!responseActiveRef.current) return;
     sendEvent({ type: "response.cancel" });
   }, [sendEvent]);
 
@@ -315,9 +335,9 @@ export function useInworldRealtime(): UseInworldRealtimeReturn {
   }, [sendEvent]);
 
   const interrupt = useCallback(() => {
-    sendEvent({ type: "response.cancel" });
+    cancelResponse();
     setAgentState("idle");
-  }, [sendEvent]);
+  }, [cancelResponse]);
 
   useEffect(() => {
     return () => {

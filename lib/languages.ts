@@ -8,6 +8,7 @@
 
 export type LanguageId =
   | "english"
+  | "english_uk"
   | "spanish"
   | "french"
   | "german"
@@ -23,23 +24,30 @@ export interface Language {
   flag: string;
   locale: string;
   code: string;
+  /**
+   * Name used inside AI prompts. Dialect-specific for English so the model uses
+   * the right spelling and vocabulary; the plain language name everywhere else.
+   */
+  promptLabel: string;
 }
 
 export const LANGUAGES: Language[] = [
-  { id: "english", label: "English", flag: "🇬🇧", locale: "en-US", code: "EN" },
-  { id: "spanish", label: "Spanish", flag: "🇪🇸", locale: "es-ES", code: "ES" },
-  { id: "french", label: "French", flag: "🇫🇷", locale: "fr-FR", code: "FR" },
-  { id: "german", label: "German", flag: "🇩🇪", locale: "de-DE", code: "DE" },
-  { id: "chinese", label: "Chinese", flag: "🇨🇳", locale: "zh-CN", code: "ZH" },
-  { id: "japanese", label: "Japanese", flag: "🇯🇵", locale: "ja-JP", code: "JA" },
-  { id: "portuguese", label: "Portuguese", flag: "🇵🇹", locale: "pt-PT", code: "PT" },
-  { id: "russian", label: "Russian", flag: "🇷🇺", locale: "ru-RU", code: "RU" },
-  { id: "arabic", label: "Arabic", flag: "🇸🇦", locale: "ar-SA", code: "AR" },
+  { id: "english", label: "English (US)", flag: "🇺🇸", locale: "en-US", code: "EN", promptLabel: "American English" },
+  { id: "english_uk", label: "English (UK)", flag: "🇬🇧", locale: "en-GB", code: "EN", promptLabel: "British English" },
+  { id: "spanish", label: "Spanish", flag: "🇪🇸", locale: "es-ES", code: "ES", promptLabel: "Spanish" },
+  { id: "french", label: "French", flag: "🇫🇷", locale: "fr-FR", code: "FR", promptLabel: "French" },
+  { id: "german", label: "German", flag: "🇩🇪", locale: "de-DE", code: "DE", promptLabel: "German" },
+  { id: "chinese", label: "Chinese", flag: "🇨🇳", locale: "zh-CN", code: "ZH", promptLabel: "Chinese" },
+  { id: "japanese", label: "Japanese", flag: "🇯🇵", locale: "ja-JP", code: "JA", promptLabel: "Japanese" },
+  { id: "portuguese", label: "Portuguese", flag: "🇵🇹", locale: "pt-PT", code: "PT", promptLabel: "Portuguese" },
+  { id: "russian", label: "Russian", flag: "🇷🇺", locale: "ru-RU", code: "RU", promptLabel: "Russian" },
+  { id: "arabic", label: "Arabic", flag: "🇸🇦", locale: "ar-SA", code: "AR", promptLabel: "Arabic" },
 ];
 
 /** Onboarding offers 8 languages in mobile order (matches fina's OnboardingShared.LANGUAGES). */
 export const ONBOARDING_LANGUAGE_IDS: LanguageId[] = [
   "english",
+  "english_uk",
   "spanish",
   "french",
   "japanese",
@@ -65,6 +73,7 @@ export function speechLocale(id?: string | null): string {
 
 const PRONUNCIATION_VOICES: Record<LanguageId, string> = {
   english: "Ashley",
+  english_uk: "Ashley",
   spanish: "Diego",
   french: "Alain",
   german: "Johanna",
@@ -83,6 +92,7 @@ export function pronunciationVoice(id?: string | null): string {
 /** Ported from fina OnboardingShared.LANG_GREETING. */
 export const LANGUAGE_GREETING: Record<string, string> = {
   english: "Great choice! English opens every door.",
+  english_uk: "Brilliant choice! English opens every door.",
   spanish: "¡Qué bueno! Spanish is beautiful.",
   french: "Magnifique! French it is.",
   japanese: "やった! Japanese — bold choice.",
@@ -95,6 +105,7 @@ export const LANGUAGE_GREETING: Record<string, string> = {
 /** Ported from fina OnboardingShared.LEVEL_SAMPLES. */
 export const LEVEL_SAMPLES: Record<string, string[]> = {
   english: ["Hello!", "My name is…", "How are you?", "I want to improve"],
+  english_uk: ["Hello!", "My name is…", "How are you?", "I want to improve"],
   spanish: ["¡Hola!", "Me llamo…", "¿Cómo estás?", "Quiero mejorar"],
   french: ["Bonjour!", "Je m'appelle…", "Comment ça va?", "Je veux progresser"],
   japanese: ["こんにちは!", "私は…", "元気ですか?", "上達したい"],

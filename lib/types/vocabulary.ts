@@ -1,3 +1,5 @@
+import type { LanguageId } from '@/lib/languages';
+
 /**
  * Vocabulary / lesson types.
  *
@@ -43,6 +45,7 @@ export interface Lesson {
   vocabularyWords: VocabularyWord[];
   supabaseId?: string; // UUID from generated_lessons table (for deletion)
   isUserGenerated?: boolean; // Flag for user-created lessons (shows badge)
+  language?: LanguageId; // Language a generated lesson was written in (absent on older lessons)
 }
 
 /**

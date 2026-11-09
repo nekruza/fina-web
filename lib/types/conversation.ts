@@ -56,3 +56,21 @@ export interface ConversationSession {
   analysis: LanguageAnalysis | null;
   messageCount: number | null;
 }
+
+/** A conversation the learner chose to keep, with its full transcript. */
+export interface SavedConversation extends ConversationSession {
+  messages: Message[];
+}
+
+/** What the browser sends to save (or re-save) a call's transcript. */
+export interface SaveTranscriptInput {
+  roleplayId: string;
+  roleplayTitle: string;
+  tutorId: string;
+  language: string;
+  level: string;
+  durationSeconds: number;
+  messages: Message[];
+  /** Omitted when feedback hasn't arrived yet, so a re-save never wipes a stored analysis. */
+  analysis?: LanguageAnalysis | null;
+}

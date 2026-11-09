@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
   }
 
   const resolvedLanguage: LanguageId = isLanguageId(targetLanguage) ? targetLanguage : "english";
-  const label = getLanguage(resolvedLanguage).label;
+  const label = getLanguage(resolvedLanguage).promptLabel;
 
   try {
     let translation = "";

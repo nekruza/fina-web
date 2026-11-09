@@ -191,6 +191,22 @@ describe("PATCH /api/profile", () => {
     expect(writePayload(mock, "profiles", "update")).toEqual({ display_name: "New Name" });
   });
 
+  it.each([true, false])("saves the transcript-saving switch (%p)", async (value) => {
+    const mock = mockSupabase({});
+
+    const res = await PATCH(patchRequest({ saveTranscripts: value }));
+
+    expect(res.status).toBe(200);
+    expect(writePayload(mock, "profiles", "update")).toEqual({ save_transcripts: value });
+  });
+
+  it.each(["yes", 1, null])("rejects a non-boolean saveTranscripts (%p)", async (value) => {
+    mockSupabase({});
+    const res = await PATCH(patchRequest({ saveTranscripts: value }));
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toEqual({ error: "Invalid saveTranscripts" });
+  });
+
   it("rejects an empty displayName", async () => {
     mockSupabase({});
     const res = await PATCH(patchRequest({ displayName: "   " }));

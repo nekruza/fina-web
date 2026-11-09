@@ -6,9 +6,11 @@ import { ACCENT_BUTTON_STYLE } from "./callTheme";
 interface EndCallDialogProps {
   onCancel: () => void;
   onConfirm: () => void;
+  /** Whether the learner keeps transcripts (Settings → AI & privacy). */
+  saveTranscripts?: boolean;
 }
 
-export const EndCallDialog: FC<EndCallDialogProps> = ({ onCancel, onConfirm }) => (
+export const EndCallDialog: FC<EndCallDialogProps> = ({ onCancel, onConfirm, saveTranscripts = false }) => (
   <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center px-4">
     <div
       role="dialog"
@@ -24,7 +26,9 @@ export const EndCallDialog: FC<EndCallDialogProps> = ({ onCancel, onConfirm }) =
         End conversation
       </h3>
       <p id="end-conversation-body" className="text-sm text-white/60 mb-6">
-        Your conversation will be saved and analysed.
+        {saveTranscripts
+          ? "We'll analyze your conversation and save the transcript."
+          : "We'll analyze your conversation."}
       </p>
 
       <div className="flex gap-3">

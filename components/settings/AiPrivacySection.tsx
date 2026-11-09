@@ -1,7 +1,9 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { AI_SERVICES } from "@/lib/data/onboarding";
 
-export function AiPrivacySection() {
+/** `children` are privacy controls shown under the intro (e.g. transcript saving). */
+export function AiPrivacySection({ children }: { children?: ReactNode }) {
   return (
     <section id="ai-privacy" className="scroll-mt-24 rounded-2xl border border-line bg-surface p-6 sm:p-8">
       <div className="max-w-2xl">
@@ -12,6 +14,8 @@ export function AiPrivacySection() {
           what each service receives and why.
         </p>
       </div>
+
+      {children}
 
       <div className="mt-6 grid gap-3 lg:grid-cols-2">
         {AI_SERVICES.map((service) => (

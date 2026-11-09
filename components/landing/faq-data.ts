@@ -1,5 +1,5 @@
 import { FREE_CONVERSATIONS, FREE_GENERATIONS } from "@/lib/billing";
-import { LANGUAGES } from "@/lib/languages";
+import { LANGUAGES, getLanguage } from "@/lib/languages";
 
 /**
  * Single source for the landing FAQ. The FAQ section renders these items and
@@ -19,7 +19,7 @@ function joinWithAnd(items: string[]): string {
 export const FAQ_ITEMS: FaqItem[] = [
   {
     question: "Which languages can I learn?",
-    answer: `English is the focus: Fina helps you speak it in real conversations with an AI tutor. Fina also teaches ${joinWithAnd(LANGUAGES.filter((l) => l.id !== "english").map((l) => l.label))}. You choose a language when you set up, and you can switch at any time in Settings.`,
+    answer: `English is the focus, and you can choose ${getLanguage("english").label} or ${getLanguage("english_uk").label}: Fina helps you speak it in real conversations with an AI tutor. Fina also teaches ${joinWithAnd(LANGUAGES.filter((l) => !l.id.startsWith("english")).map((l) => l.label))}. You choose a language when you set up, and you can switch at any time in Settings.`,
   },
   {
     question: "Does Fina work in my browser?",

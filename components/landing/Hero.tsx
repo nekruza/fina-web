@@ -15,7 +15,7 @@ const REPLY_SUGGESTIONS = ["A latte, please.", "A small coffee, thanks."];
 
 const ENGLISH_FIRST_LANGUAGES = [
   getLanguage("english"),
-  ...LANGUAGES.filter((language) => language.id !== "english"),
+  ...LANGUAGES.filter((language) => !language.id.startsWith("english")),
 ];
 
 /**

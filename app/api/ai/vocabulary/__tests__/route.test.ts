@@ -168,6 +168,7 @@ describe("happy path generation", () => {
     expect(body.lesson.supabaseId).toBe("new-id");
     expect(body.lesson.isUserGenerated).toBe(true);
     expect(body.lesson.vocabularyWords).toHaveLength(1);
+    expect(body.lesson.language).toBe("spanish");
     expect(streamLLM.mock.calls[0][0].systemPrompt).toContain("Spanish");
     expect(streamLLM.mock.calls[0][0].systemPrompt).toContain("greetings");
   });

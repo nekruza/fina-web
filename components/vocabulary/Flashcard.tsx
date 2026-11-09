@@ -2,11 +2,15 @@
 
 import { Heart, Volume2 } from "lucide-react";
 import type { VocabularyWord } from "@/lib/types/vocabulary";
+import type { LanguageId } from "@/lib/languages";
+import { LanguageFlag } from "./LanguageFlag";
 
 export type PlayState = "idle" | "loading" | "playing";
 
 export interface FlashcardProps {
   word: VocabularyWord;
+  /** Language the word is in; shown as a flag beside the difficulty. */
+  language?: LanguageId;
   isFavorite: boolean;
   onToggleFavorite: () => void;
   playState: PlayState;
@@ -26,15 +30,18 @@ const PLAY_LABEL: Record<PlayState, string> = {
 };
 
 /** A single vocabulary flashcard face: word, pronunciation, definition, example. */
-export function Flashcard({ word, isFavorite, onToggleFavorite, playState, onPlay }: FlashcardProps) {
+export function Flashcard({ word, language, isFavorite, onToggleFavorite, playState, onPlay }: FlashcardProps) {
   return (
     <div className="w-full max-w-sm rounded-[2rem] border border-line bg-surface p-8 shadow-[0_24px_48px_-24px_rgba(27,26,23,0.18)]">
       <div className="mb-6 flex items-center justify-between">
-        <span
-          className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide ${DIFFICULTY_STYLES[word.difficulty]}`}
-        >
-          {word.difficulty}
-        </span>
+        <div className="flex items-center gap-2">
+          <span
+            className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide ${DIFFICULTY_STYLES[word.difficulty]}`}
+          >
+            {word.difficulty}
+          </span>
+          {language && <LanguageFlag language={language} className="text-xl" />}
+        </div>
         <button
           type="button"
           onClick={onToggleFavorite}

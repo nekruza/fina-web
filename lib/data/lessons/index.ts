@@ -12,6 +12,7 @@ import { arabicLessons } from './arabic';
 
 export const lessonsByLanguage: Record<LanguageId, Lesson[]> = {
   english: englishLessons,
+  english_uk: englishLessons,
   spanish: spanishLessons,
   french: frenchLessons,
   german: germanLessons,

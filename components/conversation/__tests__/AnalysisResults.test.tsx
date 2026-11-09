@@ -105,6 +105,6 @@ describe("AnalysisResults", () => {
 
   it("explains that the conversation was still saved when analysis is unavailable", () => {
     render(<AnalysisResults analysis={null} isLoading={false} durationSeconds={60} />);
-    expect(screen.getByText(/couldn't analyse this conversation/i)).toBeInTheDocument();
+    expect(screen.getByText(/couldn't analyze this conversation, but it still counts toward your streak/i)).toBeInTheDocument();
   });
 });
