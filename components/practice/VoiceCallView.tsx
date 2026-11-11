@@ -26,7 +26,7 @@ import type { RoleplayScenario } from "@/lib/types/roleplay"
 import { useInworldRealtime } from "@/lib/hooks/useInworldRealtime"
 import { buildConversationInstructions } from "@/lib/utils/buildConversationInstructions"
 import { getTutorById, tutorVoice, type TutorId } from "@/lib/tutors"
-import { getLanguage, speechLocale, type LanguageId } from "@/lib/languages"
+import { getLanguage, speechLocale, ttsSettings, type LanguageId } from "@/lib/languages"
 import type { UserLevel } from "@/lib/levels"
 import { sseData } from "@/lib/sse"
 import { stripBeginMarker } from "@/lib/transcripts"
@@ -106,6 +106,7 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 	const voice = tutorVoice(tutor, language)
 	const locale = speechLocale(language)
 	const languageInfo = getLanguage(language)
+	const ttsVoice = ttsSettings(language)
 
 	const [messages, setMessages] = useState<Message[]>([])
 	const [convState, setConvState] = useState<ConversationState>("initializing")
@@ -242,6 +243,8 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 					instructions,
 					voice,
 					model: "google-ai-studio/gemini-3.8-flash",
+					ttsModel: ttsVoice.modelId,
+					ttsLanguage: ttsVoice.language,
 					hybridMode: true,
 				})
 			} else {

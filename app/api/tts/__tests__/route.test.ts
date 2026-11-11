@@ -179,6 +179,41 @@ describe("Inworld primary provider", () => {
     expect(JSON.parse(mockFetch().mock.calls[0][1].body).voiceId).toBe("Clive");
   });
 
+  it("keeps TTS 1.5 Mini and sends no language for languages it supports", async () => {
+    mockFetch().mockResolvedValue(inworldOk());
+
+    await POST(ttsRequest({ text: "Hola.", language: "spanish" }));
+
+    const body = JSON.parse(mockFetch().mock.calls[0][1].body);
+    expect(body.modelId).toBe("inworld-tts-1.5-mini");
+    expect(body).not.toHaveProperty("language");
+  });
+
+  it("synthesises Czech with TTS-2 and the cs-CZ locale", async () => {
+    mockFetch().mockResolvedValue(inworldOk());
+
+    await POST(ttsRequest({ text: "Ahoj.", language: "czech" }));
+
+    expect(JSON.parse(mockFetch().mock.calls[0][1].body)).toMatchObject({
+      text: "Ahoj.",
+      voiceId: "Ashley",
+      modelId: "inworld-tts-2",
+      language: "cs-CZ",
+    });
+  });
+
+  it("recognises Czech from a speech locale and keeps an explicit voice", async () => {
+    mockFetch().mockResolvedValue(inworldOk());
+
+    await POST(ttsRequest({ text: "Ahoj.", voiceId: "Szymon", language: "cs-CZ" }));
+
+    expect(JSON.parse(mockFetch().mock.calls[0][1].body)).toMatchObject({
+      voiceId: "Szymon",
+      modelId: "inworld-tts-2",
+      language: "cs-CZ",
+    });
+  });
+
   it("ignores an invalid language and falls back to the default voice", async () => {
     mockFetch().mockResolvedValue(inworldOk());
 

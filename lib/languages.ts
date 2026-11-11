@@ -16,7 +16,8 @@ export type LanguageId =
   | "japanese"
   | "portuguese"
   | "russian"
-  | "arabic";
+  | "arabic"
+  | "czech";
 
 export interface Language {
   id: LanguageId;
@@ -42,9 +43,13 @@ export const LANGUAGES: Language[] = [
   { id: "portuguese", label: "Portuguese", flag: "🇵🇹", locale: "pt-PT", code: "PT", promptLabel: "Portuguese" },
   { id: "russian", label: "Russian", flag: "🇷🇺", locale: "ru-RU", code: "RU", promptLabel: "Russian" },
   { id: "arabic", label: "Arabic", flag: "🇸🇦", locale: "ar-SA", code: "AR", promptLabel: "Arabic" },
+  { id: "czech", label: "Czech", flag: "🇨🇿", locale: "cs-CZ", code: "CS", promptLabel: "Czech" },
 ];
 
-/** Onboarding offers 8 languages in mobile order (matches fina's OnboardingShared.LANGUAGES). */
+/**
+ * Languages offered in onboarding, in fina's mobile order (OnboardingShared.LANGUAGES),
+ * with web-only additions (UK English, Czech) slotted in.
+ */
 export const ONBOARDING_LANGUAGE_IDS: LanguageId[] = [
   "english",
   "english_uk",
@@ -55,6 +60,7 @@ export const ONBOARDING_LANGUAGE_IDS: LanguageId[] = [
   "portuguese",
   "chinese",
   "arabic",
+  "czech",
 ];
 
 const LANGUAGE_IDS = new Set<string>(LANGUAGES.map((l) => l.id));
@@ -82,11 +88,45 @@ const PRONUNCIATION_VOICES: Record<LanguageId, string> = {
   chinese: "Xinyi",
   japanese: "Asuka",
   arabic: "Omar",
+  // Inworld has no Czech-native voice; Ashley scored best speaking Czech on TTS-2.
+  czech: "Ashley",
 };
 
 export function pronunciationVoice(id?: string | null): string {
   const language = getLanguage(id);
   return PRONUNCIATION_VOICES[language.id];
+}
+
+/** Matches a language by id ("czech") or by speech locale ("cs-CZ"). */
+export function findLanguage(idOrLocale?: string | null): Language | undefined {
+  if (!idOrLocale) return undefined;
+  return LANGUAGES.find((l) => l.id === idOrLocale || l.locale === idOrLocale);
+}
+
+export type TtsModelId = "inworld-tts-1.5-mini" | "inworld-tts-2";
+
+export const DEFAULT_TTS_MODEL: TtsModelId = "inworld-tts-1.5-mini";
+
+/**
+ * Languages Inworld TTS 1.5 cannot speak. TTS-2 covers them, but it costs more
+ * and is slower, so only these languages use it. With 1.5 Mini, Czech comes out
+ * in an English accent.
+ */
+const TTS_2_LANGUAGES = new Set<LanguageId>(["czech"]);
+
+export interface TtsSettings {
+  modelId: TtsModelId;
+  /** BCP-47 synthesis language. Only set where the model needs telling. */
+  language?: string;
+}
+
+/** Inworld TTS model (and synthesis language) for a language id or speech locale. */
+export function ttsSettings(idOrLocale?: string | null): TtsSettings {
+  const language = findLanguage(idOrLocale);
+  if (language && TTS_2_LANGUAGES.has(language.id)) {
+    return { modelId: "inworld-tts-2", language: language.locale };
+  }
+  return { modelId: DEFAULT_TTS_MODEL };
 }
 
 /** Ported from fina OnboardingShared.LANG_GREETING. */
@@ -100,6 +140,7 @@ export const LANGUAGE_GREETING: Record<string, string> = {
   portuguese: "Que legal! Portuguese is warm.",
   chinese: "太好了! Chinese — huge respect.",
   arabic: "ممتاز! Arabic is gorgeous.",
+  czech: "Výborně! Czech — a beautiful challenge.",
 };
 
 /** Ported from fina OnboardingShared.LEVEL_SAMPLES. */
@@ -113,4 +154,5 @@ export const LEVEL_SAMPLES: Record<string, string[]> = {
   portuguese: ["Olá!", "Meu nome é…", "Tudo bem?", "Quero melhorar"],
   chinese: ["你好!", "我叫…", "你好吗?", "我想进步"],
   arabic: ["مرحباً!", "اسمي…", "كيف الحال؟", "أريد التحسن"],
+  czech: ["Ahoj!", "Jmenuji se…", "Jak se máš?", "Chci se zlepšit"],
 };

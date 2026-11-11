@@ -162,6 +162,22 @@ it("passes the started conversation session into realtime setup", async () => {
 	)
 })
 
+it("asks realtime for Czech-capable TTS when the call is in Czech", async () => {
+	renderCall("session-1", { language: "czech" })
+	await waitFor(() =>
+		expect(connect).toHaveBeenCalledWith(
+			expect.objectContaining({ voice: "Ashley", ttsModel: "inworld-tts-2", ttsLanguage: "cs-CZ" }),
+		),
+	)
+})
+
+it("keeps the default TTS model for languages TTS 1.5 already speaks", async () => {
+	renderCall()
+	await waitFor(() => expect(connect).toHaveBeenCalled())
+	expect(connect.mock.calls[0][0]).toMatchObject({ ttsModel: "inworld-tts-1.5-mini" })
+	expect(connect.mock.calls[0][0].ttsLanguage).toBeUndefined()
+})
+
 it("only opens the typed reply after the message control is clicked", async () => {
 	useInworldRealtime.mockReturnValue({
 		connect,

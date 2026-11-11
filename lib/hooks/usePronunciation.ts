@@ -73,7 +73,7 @@ export function usePronunciation(language: LanguageId): UsePronunciationResult {
           const res = await fetch("/api/tts", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ text, voiceId: pronunciationVoice(language) }),
+            body: JSON.stringify({ text, voiceId: pronunciationVoice(language), language }),
           });
 
           if (!res.ok) {
