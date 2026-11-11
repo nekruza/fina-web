@@ -2,12 +2,17 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import type { Message } from "@/lib/types/conversation";
+import { DEFAULT_TTS_MODEL } from "@/lib/languages";
 
 export interface RealtimeConfig {
   sessionId: string;
   instructions: string;
   voice: string;
   model: string;
+  /** Inworld TTS model for the tutor's voice. Defaults to TTS 1.5 Mini. */
+  ttsModel?: string;
+  /** BCP-47 synthesis language, forwarded as providerData.tts.language. */
+  ttsLanguage?: string;
   hybridMode?: boolean;
 }
 
@@ -226,11 +231,15 @@ export function useInworldRealtime(): UseInworldRealtimeReturn {
           output_modalities: ["audio", "text"],
           audio: {
             output: {
-              model: "inworld-tts-1.5-mini",
+              model: config.ttsModel ?? DEFAULT_TTS_MODEL,
               voice: config.voice,
             },
           },
         };
+
+        if (config.ttsLanguage) {
+          sessionUpdate.providerData = { tts: { language: config.ttsLanguage } };
+        }
 
         // Only include audio input config (VAD/transcription) when NOT in hybrid mode
         if (!config.hybridMode) {

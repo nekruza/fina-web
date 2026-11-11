@@ -193,6 +193,24 @@ describe("connect", () => {
     expect(sessionUpdate.session.audio.output.voice).toBe("Clive");
   });
 
+  it("defaults the output voice to TTS 1.5 Mini without a TTS language", async () => {
+    const { result } = renderHook(() => useInworldRealtime());
+    const dc = await connected(result);
+
+    const { session } = JSON.parse(dc.send.mock.calls[0][0]);
+    expect(session.audio.output.model).toBe("inworld-tts-1.5-mini");
+    expect(session.providerData).toBeUndefined();
+  });
+
+  it("uses the requested TTS model and forwards the TTS language", async () => {
+    const { result } = renderHook(() => useInworldRealtime());
+    const dc = await connected(result, { ...CONFIG, ttsModel: "inworld-tts-2", ttsLanguage: "cs-CZ" });
+
+    const { session } = JSON.parse(dc.send.mock.calls[0][0]);
+    expect(session.audio.output).toEqual({ model: "inworld-tts-2", voice: "Clive" });
+    expect(session.providerData).toEqual({ tts: { language: "cs-CZ" } });
+  });
+
   it("enables voice detection and transcription in voice mode", async () => {
     const { result } = renderHook(() => useInworldRealtime());
     const dc = await connected(result);

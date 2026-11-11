@@ -33,7 +33,7 @@ describe("OnboardingFlow", () => {
 
     // Step 1: tutor — Luna is preselected by default, so Continue is enabled immediately.
     expect(screen.getByText("Pick your tutor")).toBeInTheDocument();
-    expect(screen.getByText("You can switch anytime. All fluent in 9 languages.")).toBeInTheDocument();
+    expect(screen.getByText("You can switch anytime. All fluent in 10 languages.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Continue with Luna" }));
 
     // Step 2: language — Continue disabled until a language is picked.
