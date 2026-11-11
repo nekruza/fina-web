@@ -104,6 +104,28 @@ test.describe("running a conversation", () => {
     await expect(page.getByText(/3\s*days?\s*streak/)).toBeVisible();
   });
 
+  test("the on-screen caption can be selected and copied", async ({ page }) => {
+    await start(page);
+    // Once it's the learner's turn the caption shows the tutor's greeting.
+    await expect(page.getByRole("button", { name: "Type a message" })).toBeEnabled({ timeout: 15_000 });
+
+    const caption = page.getByTestId("video-caption");
+    const line = caption.locator("p").last();
+    await expect(line).not.toBeEmpty();
+    const expected = (await line.textContent())!.trim();
+
+    // Drag across the caption line with the real mouse, as a learner would.
+    const box = (await line.boundingBox())!;
+    await page.mouse.move(box.x + 1, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width - 1, box.y + box.height - 2, { steps: 10 });
+    await page.mouse.up();
+
+    const selected = await page.evaluate(() => window.getSelection()?.toString().trim() ?? "");
+    expect(selected.length).toBeGreaterThan(0);
+    expect(expected).toContain(selected);
+  });
+
   async function finishAfterGreeting(page: import("@playwright/test").Page) {
     await start(page);
     // The tutor's greeting is in the transcript once it's the learner's turn.
