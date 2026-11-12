@@ -1,7 +1,7 @@
 "use client";
 
 import { FC } from "react";
-import { AlertTriangle, Mic, MicOff } from "lucide-react";
+import { AlertTriangle, Mic, MicOff, Pencil } from "lucide-react";
 import { ACCENT_BUTTON_STYLE } from "./callTheme";
 
 export const MicDeniedBanner: FC<{ message: string | null }> = ({ message }) => (
@@ -70,5 +70,19 @@ export const SendReplyButton: FC<{ onClick: () => void }> = ({ onClick }) => (
   >
     <Mic className="w-4 h-4" aria-hidden />
     Send
+  </button>
+);
+
+/** Opens the spoken reply as editable text, for fixing words the mic misheard. */
+export const EditReplyButton: FC<{ onClick: () => void }> = ({ onClick }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    aria-label="Edit spoken reply"
+    title="Fix any words that were heard wrong before sending"
+    className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-white/85 border border-white/15 bg-white/[0.06] transition hover:bg-white/10 motion-safe:active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+  >
+    <Pencil className="w-4 h-4" aria-hidden />
+    Edit
   </button>
 );

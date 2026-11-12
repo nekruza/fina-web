@@ -211,15 +211,18 @@ export const VideoArea: FC<VideoAreaProps> = ({
         </div>
       </div>
 
-      {/* Caption overlay — spans full width at bottom */}
+      {/* Caption overlay — spans full width at bottom. The wrapper ignores
+          pointer events so it never blocks the video; the box takes them back
+          so learners can select and copy the caption text. */}
       {caption?.text && (
         <div className="absolute bottom-4 left-4 right-4 z-20 flex justify-center pointer-events-none">
           <div
-            className="max-w-2xl w-full px-5 py-3 rounded-2xl text-center"
+            data-testid="video-caption"
+            className="max-w-2xl w-full px-5 py-3 rounded-2xl text-center pointer-events-auto select-text cursor-text"
             style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(14px)" }}
           >
             <p
-              className="text-[9px] font-bold uppercase tracking-widest mb-1.5"
+              className="text-[9px] font-bold uppercase tracking-widest mb-1.5 select-none"
               style={{ color: caption.role === "user" ? YOUR_TURN : "rgba(255,255,255,0.45)" }}
             >
               {caption.role === "user" ? "You" : tutor.name.split(" ")[0]}

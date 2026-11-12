@@ -99,7 +99,7 @@ describe("primary path — /api/tts", () => {
       "/api/tts",
       expect.objectContaining({
         method: "POST",
-        body: JSON.stringify({ text: "hola", voiceId: "Diego" }),
+        body: JSON.stringify({ text: "hola", voiceId: "Diego", language: "spanish" }),
       })
     );
   });

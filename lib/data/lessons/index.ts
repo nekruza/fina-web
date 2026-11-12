@@ -9,6 +9,7 @@ import { japaneseLessons } from './japanese';
 import { portugueseLessons } from './portuguese';
 import { russianLessons } from './russian';
 import { arabicLessons } from './arabic';
+import { czechLessons } from './czech';
 
 export const lessonsByLanguage: Record<LanguageId, Lesson[]> = {
   english: englishLessons,
@@ -21,6 +22,7 @@ export const lessonsByLanguage: Record<LanguageId, Lesson[]> = {
   portuguese: portugueseLessons,
   russian: russianLessons,
   arabic: arabicLessons,
+  czech: czechLessons,
 };
 
 /**

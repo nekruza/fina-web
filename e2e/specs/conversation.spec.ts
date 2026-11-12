@@ -1,5 +1,6 @@
 import { test, expect, analysisFixture, hintsFixture, profileFixture, usageFixture } from "../support/test";
 import { signIn } from "../support/auth";
+import { installFakeSpeech, isListening, say, sayLate } from "../support/fake-speech";
 
 /**
  * The voice-roleplay conversation loop: setup, starting, the live controls,
@@ -102,6 +103,97 @@ test.describe("running a conversation", () => {
     await expect(page.getByText("Fluency")).toBeVisible();
     await expect(page.getByText("Grammar")).toBeVisible();
     await expect(page.getByText(/3\s*days?\s*streak/)).toBeVisible();
+  });
+
+  test("the on-screen caption can be selected and copied", async ({ page }) => {
+    await start(page);
+    // Once it's the learner's turn the caption shows the tutor's greeting.
+    await expect(page.getByRole("button", { name: "Type a message" })).toBeEnabled({ timeout: 15_000 });
+
+    const caption = page.getByTestId("video-caption");
+    const line = caption.locator("p").last();
+    await expect(line).not.toBeEmpty();
+    const expected = (await line.textContent())!.trim();
+
+    // Drag across the caption line with the real mouse, as a learner would.
+    const box = (await line.boundingBox())!;
+    await page.mouse.move(box.x + 1, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width - 1, box.y + box.height - 2, { steps: 10 });
+    await page.mouse.up();
+
+    const selected = await page.evaluate(() => window.getSelection()?.toString().trim() ?? "");
+    expect(selected.length).toBeGreaterThan(0);
+    expect(expected).toContain(selected);
+  });
+
+  test.describe("fixing a misheard reply", () => {
+    const userTurns = (api: { calls: (s: string) => Array<{ method: string; body: string | null }> }) =>
+      api
+        .calls("/api/ai/voice")
+        // The learner's replies in this test all start this way; the greeting
+        // request (a "[BEGIN]" user message) and hint requests never do.
+        .filter((c) => c.method === "POST" && (c.body ?? "").includes("I would like"));
+
+    test.beforeEach(async ({ page }) => {
+      await installFakeSpeech(page);
+    });
+
+    async function listening(page: import("@playwright/test").Page) {
+      await start(page);
+      await expect(page.getByRole("button", { name: "Type a message" })).toBeEnabled({ timeout: 15_000 });
+      await expect.poll(() => isListening(page)).toBe(true);
+    }
+
+    test("the learner corrects what the mic heard, and the corrected text is sent", async ({ page, api }) => {
+      await listening(page);
+      await say(page, "I would like a cofee please");
+
+      await page.getByRole("button", { name: "Edit spoken reply" }).click();
+      const field = page.getByRole("textbox", { name: "Edit your reply" });
+      await expect(field).toHaveValue("I would like a cofee please");
+      await expect(field).toBeFocused();
+      // The mic is off while she edits, so nothing new is written into the field.
+      expect(await isListening(page)).toBe(false);
+      await expect(page.getByRole("button", { name: "Send spoken reply" })).toHaveCount(0);
+
+      await field.fill("I would like a coffee please");
+      await page.getByRole("button", { name: "Send", exact: true }).click();
+
+      await expect.poll(() => userTurns(api).length).toBe(1);
+      const body = userTurns(api)[0].body ?? "";
+      expect(body).toContain("I would like a coffee please");
+      expect(body).not.toContain("cofee");
+    });
+
+    test("with auto-send on, a late transcription never sends while editing", async ({ page, api }) => {
+      await listening(page);
+      await page.getByRole("button", { name: "Auto-send off" }).click();
+      await say(page, "I would like a cofee");
+
+      await page.getByRole("button", { name: "Edit spoken reply" }).click();
+      // Chrome can deliver one more final result after the mic stops.
+      await sayLate(page, " and a cake");
+      await page.waitForTimeout(2_600); // longer than the 2 s auto-send silence window
+
+      expect(userTurns(api)).toHaveLength(0);
+      await expect(page.getByRole("textbox", { name: "Edit your reply" })).toHaveValue("I would like a cofee");
+    });
+
+    test("Escape abandons the edit and the mic listens again", async ({ page, api }) => {
+      await listening(page);
+      await say(page, "I would like a cofee");
+      await page.getByRole("button", { name: "Edit spoken reply" }).click();
+
+      await page.getByRole("textbox", { name: "Edit your reply" }).press("Escape");
+
+      await expect(page.getByRole("textbox", { name: "Edit your reply" })).toHaveCount(0);
+      await expect.poll(() => isListening(page)).toBe(true);
+      await say(page, "I would like a coffee");
+      await page.getByRole("button", { name: "Send spoken reply" }).click();
+      await expect.poll(() => userTurns(api).length).toBe(1);
+      expect(userTurns(api)[0].body ?? "").toContain("I would like a coffee");
+    });
   });
 
   async function finishAfterGreeting(page: import("@playwright/test").Page) {

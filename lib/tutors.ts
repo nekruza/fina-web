@@ -6,6 +6,9 @@ import type { LanguageId } from "./languages";
  * Ported from fina's onboarding tutor system (`components/onboarding/OnboardingShared.tsx`
  * TUTOR_NAMES/TUTOR_AVATARS) and the per-language voice map from
  * `hooks/useRealtimeVoice.ts` (AVATAR_VOICES).
+ *
+ * Inworld has no Czech-native voices, so the Czech entries are the voices that
+ * sounded most native speaking Czech on TTS-2 (see `ttsSettings` in languages).
  */
 
 export type TutorId = "luna" | "henry" | "jake";
@@ -41,6 +44,7 @@ export const TUTORS: Tutor[] = [
       chinese: "Xinyi",
       japanese: "Asuka",
       arabic: "Nour",
+      czech: "Ashley",
     },
   },
   {
@@ -62,6 +66,7 @@ export const TUTORS: Tutor[] = [
       chinese: "Yichen",
       japanese: "Satoshi",
       arabic: "Omar",
+      czech: "Timofey",
     },
   },
   {
@@ -83,6 +88,7 @@ export const TUTORS: Tutor[] = [
       chinese: "Yichen",
       japanese: "Satoshi",
       arabic: "Omar",
+      czech: "Szymon",
     },
   },
 ];

@@ -5,7 +5,6 @@
  */
 import { readFileSync } from "fs";
 import { join } from "path";
-import { LANGUAGES } from "@/lib/languages";
 
 const SQL = readFileSync(join(__dirname, "..", "migrations", "20261107000000_english_uk.sql"), "utf8");
 const normalized = SQL.replace(/--.*$/gm, "").replace(/\s+/g, " ").toLowerCase();
@@ -16,8 +15,10 @@ describe("english_uk migration", () => {
     expect(normalized).toContain("alter table public.profiles add constraint profiles_target_language_check");
   });
 
-  it("allows every language the web app offers plus the ids already in the database", () => {
-    for (const id of [...LANGUAGES.map((l) => l.id), "turkish"]) {
+  it("allows every language the web app offered at the time plus the ids already in the database", () => {
+    // Later migrations (e.g. czech) widen the constraint further; this one is frozen.
+    const ids = ["english", "english_uk", "spanish", "french", "german", "chinese", "japanese", "portuguese", "russian", "arabic", "turkish"];
+    for (const id of ids) {
       expect(normalized).toContain(`'${id}'`);
     }
   });

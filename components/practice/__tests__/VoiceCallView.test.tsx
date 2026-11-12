@@ -8,15 +8,17 @@ jest.mock("@/lib/hooks/useInworldRealtime", () => ({
 	useInworldRealtime: jest.fn(),
 }))
 jest.mock("@/lib/hooks/useTimer", () => ({ useTimer: jest.fn() }))
+const mockSpeech = {
+	isSupported: true,
+	isListening: false,
+	transcript: "",
+	finalTranscript: "",
+	stopListening: jest.fn(),
+	startListening: jest.fn(),
+	resetTranscript: jest.fn(),
+}
 jest.mock("@/lib/hooks/useSpeechRecognition", () => ({
-	useSpeechRecognition: () => ({
-		isSupported: true,
-		transcript: "",
-		finalTranscript: "",
-		stopListening: jest.fn(),
-		startListening: jest.fn(),
-		resetTranscript: jest.fn(),
-	}),
+	useSpeechRecognition: () => mockSpeech,
 }))
 jest.mock("@/lib/hooks/useSpeechSynthesis", () => ({
 	useSpeechSynthesis: () => ({ cancel: jest.fn(), speakAsync: jest.fn() }),
@@ -136,6 +138,11 @@ beforeEach(() => {
 		agentState: "idle",
 		agentAudioStream: null,
 	})
+	mockSpeech.transcript = ""
+	mockSpeech.finalTranscript = ""
+	mockSpeech.stopListening.mockReset()
+	mockSpeech.startListening.mockReset()
+	mockSpeech.resetTranscript.mockReset()
 	useTimer.mockReturnValue({
 		seconds: 0,
 		formatted: "00:00",
@@ -160,6 +167,22 @@ it("passes the started conversation session into realtime setup", async () => {
 			}),
 		),
 	)
+})
+
+it("asks realtime for Czech-capable TTS when the call is in Czech", async () => {
+	renderCall("session-1", { language: "czech" })
+	await waitFor(() =>
+		expect(connect).toHaveBeenCalledWith(
+			expect.objectContaining({ voice: "Ashley", ttsModel: "inworld-tts-2", ttsLanguage: "cs-CZ" }),
+		),
+	)
+})
+
+it("keeps the default TTS model for languages TTS 1.5 already speaks", async () => {
+	renderCall()
+	await waitFor(() => expect(connect).toHaveBeenCalled())
+	expect(connect.mock.calls[0][0]).toMatchObject({ ttsModel: "inworld-tts-1.5-mini" })
+	expect(connect.mock.calls[0][0].ttsLanguage).toBeUndefined()
 })
 
 it("only opens the typed reply after the message control is clicked", async () => {
@@ -350,5 +373,74 @@ describe("leaving mid-call", () => {
 		expect(
 			await screen.findByText("We'll analyze your conversation and save the transcript."),
 		).toBeInTheDocument()
+	})
+})
+
+describe("fixing a misheard reply", () => {
+	const sendText = jest.fn()
+
+	function listeningRealtime() {
+		sendText.mockReset()
+		useInworldRealtime.mockReturnValue({
+			connect,
+			disconnect,
+			sendText,
+			messages: [],
+			agentState: "listening",
+			agentAudioStream: null,
+		})
+	}
+
+	async function openEdit(heard = "I would like a cofee") {
+		mockSpeech.finalTranscript = heard
+		listeningRealtime()
+		renderCall()
+		await waitFor(() => expect(connect).toHaveBeenCalled())
+		fireEvent.click(await screen.findByRole("button", { name: "Edit spoken reply" }))
+	}
+
+	it("lets the learner correct the transcribed words, then sends the corrected text", async () => {
+		await openEdit()
+
+		// The mic stops so new speech can't overwrite the text being fixed.
+		expect(mockSpeech.stopListening).toHaveBeenCalled()
+		const field = screen.getByRole("textbox", { name: "Edit your reply" })
+		expect(field).toHaveValue("I would like a cofee")
+		// While editing, the raw transcript can't be sent by mistake.
+		expect(screen.queryByRole("button", { name: "Send spoken reply" })).not.toBeInTheDocument()
+
+		fireEvent.change(field, { target: { value: "I would like a coffee" } })
+		fireEvent.click(screen.getByRole("button", { name: "Send" }))
+
+		expect(sendText).toHaveBeenCalledTimes(1)
+		expect(sendText).toHaveBeenCalledWith("I would like a coffee")
+	})
+
+	it("goes back to listening when the edit is closed without sending", async () => {
+		await openEdit()
+		mockSpeech.startListening.mockClear()
+
+		fireEvent.click(screen.getByRole("button", { name: "Type a message" }))
+
+		expect(screen.queryByRole("textbox", { name: "Edit your reply" })).not.toBeInTheDocument()
+		expect(mockSpeech.startListening).toHaveBeenCalledTimes(1)
+		expect(sendText).not.toHaveBeenCalled()
+	})
+
+	it("Escape cancels the edit and resumes listening", async () => {
+		await openEdit()
+		mockSpeech.startListening.mockClear()
+
+		fireEvent.keyDown(screen.getByRole("textbox", { name: "Edit your reply" }), { key: "Escape" })
+
+		expect(screen.queryByRole("textbox", { name: "Edit your reply" })).not.toBeInTheDocument()
+		expect(mockSpeech.startListening).toHaveBeenCalledTimes(1)
+	})
+
+	it("offers no edit before anything has been heard", async () => {
+		listeningRealtime()
+		renderCall()
+		await screen.findByText("Your turn")
+		expect(screen.queryByRole("button", { name: "Edit spoken reply" })).not.toBeInTheDocument()
 	})
 })

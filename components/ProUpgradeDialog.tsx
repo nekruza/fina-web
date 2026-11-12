@@ -37,7 +37,7 @@ const DESCRIPTIONS: Record<ProUpgradeReason, string> = {
 const BENEFITS = [
   "Unlimited voice conversations",
   "Unlimited AI word generation",
-  "All 9 languages & tutors",
+  "All 10 languages & tutors",
   "Detailed conversation analysis",
 ];
 

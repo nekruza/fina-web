@@ -19,7 +19,7 @@ Each item below is wired to a route or module in this repo:
 - **Post-session analysis** (`app/api/ai/feedback/route.ts`, `components/conversation/AnalysisResults.tsx`) — six 0–100 scores (overall, fluency, grammar, vocabulary, engagement, relevancy), a short summary, up to 3 strengths, and up to 5 corrections, from the existing Gemini → OpenAI `streamLLM` path.
 - **AI vocabulary generation** (`app/app/vocabulary/generate/`, `app/api/ai/vocabulary/route.ts`) — 12-word lessons from a topic, gated by the free/Pro allowance, saved to `generated_lessons`.
 - **Flashcards and review** (`app/app/vocabulary/lessons/[lessonId]/`, `app/app/vocabulary/favorites/`, `components/vocabulary/*`) — word, IPA, part of speech, definition, example, pronunciation playback, favoriting, and a flip-card review mode.
-- **Static lesson library** (`lib/data/lessons/`) — bundled lessons for Arabic, Chinese, English, French, German, Japanese, Portuguese, Russian, and Spanish.
+- **Static lesson library** (`lib/data/lessons/`) — bundled lessons for Arabic, Chinese, Czech, English, French, German, Japanese, Portuguese, Russian, and Spanish.
 - **Onboarding** (`app/onboarding/`) — tutor → language → level → motivation → daily goal, stored in `localStorage` (`lib/onboarding-storage.ts`) and synced to the existing profile row after sign-up via `POST /api/profile/onboarding`.
 - **30-day study plan** (`app/app/study-plan/`, `lib/study-plan.ts`, `lib/study-plan-storage.ts`) — by-week layout, today highlight, per-section (speak/words) local ticks, completed days on the profile.
 - **Streaks** (`lib/streak.ts`, `components/home/StreakCard.tsx`, `components/conversation/StreakWeek.tsx`) — server-computed daily streak and weekly-activity dots, updated on conversation completion.
@@ -39,7 +39,7 @@ Each item below is wired to a route or module in this repo:
 | Database + Auth  | Supabase (Postgres, Auth)                                     | `@supabase/ssr` cookie sessions; browser client for RLS-scoped reads/writes, service-role admin client for privileged server writes                                            |
 | Conversation LLM | Google Gemini 2.5 Flash Lite → OpenAI `gpt-5.4-mini` fallback | SSE streaming through `lib/llm.ts`                                                                                                                                             |
 | Realtime voice   | Inworld Realtime (WebRTC)                                     | Server brokers ICE servers and the SDP exchange (`app/api/realtime/*`); model `google-ai-studio/gemini-3.8-flash`                                                              |
-| TTS              | Inworld TTS 1.5 Mini → Chutes Kokoro → Web `SpeechSynthesis`  | Three-tier fallback in `app/api/tts/route.ts` and `lib/hooks/useSpeechSynthesis.ts`                                                                                            |
+| TTS              | Inworld TTS 1.5 Mini → Chutes Kokoro → Web `SpeechSynthesis`  | Three-tier fallback in `app/api/tts/route.ts` and `lib/hooks/useSpeechSynthesis.ts`; Czech uses Inworld TTS-2 (`ttsSettings` in `lib/languages.ts`) since 1.5 has no Czech     |
 | STT              | Web Speech Recognition API                                    | `lib/hooks/useSpeechRecognition.ts`, locale per target language; best supported in Chrome/Edge                                                                                 |
 | Payments         | Stripe (`stripe` v20)                                         | Checkout `mode: "subscription"`, billing portal, webhook                                                                                                                       |
 | Analytics        | Mixpanel (EU host), Vercel Analytics                          | `lib/mixpanel.ts`, `components/MixpanelInit.tsx`                                                                                                                               |
@@ -137,7 +137,7 @@ fina-web/
 │   ├── structured-data/          # JSON-LD schema components
 │   └── ui/                       # shadcn/ui primitives
 ├── lib/
-│   ├── data/                     # lessons/* (9 languages), roleplays.ts, studyPlan.ts, onboarding.ts
+│   ├── data/                     # lessons/* (10 languages), roleplays.ts, studyPlan.ts, onboarding.ts
 │   ├── db/                       # profile, conversations, lessons, favorites, generatedLessons, customRoleplays, feedback
 │   ├── hooks/                    # useInworldRealtime, useSpeechRecognition, useSpeechSynthesis, usePronunciation, useTimer
 │   ├── queries/                  # TanStack Query hooks + key registry

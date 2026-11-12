@@ -304,7 +304,7 @@ function TutorStep({
       >
         Pick your tutor
       </h1>
-      <p className="mb-6 text-base text-sub">You can switch anytime. All fluent in 9 languages.</p>
+      <p className="mb-6 text-base text-sub">You can switch anytime. All fluent in 10 languages.</p>
 
       <div role="radiogroup" aria-label="Choose your tutor" className="min-h-0 flex-1 space-y-3 overflow-y-auto pb-32">
         {TUTORS.map((t) => {
