@@ -18,6 +18,7 @@ import {
 	GoalReachedBanner,
 	MicDeniedBanner,
 	SendReplyButton,
+	EditReplyButton,
 	SpeechErrorBanner,
 } from "./CallBanners"
 import { YOUR_TURN } from "./callTheme"
@@ -122,6 +123,8 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 	const [autoSend, setAutoSend] = useState(false)
 	const [typedInputOpen, setTypedInputOpen] = useState(false)
 	const [typedText, setTypedText] = useState("")
+	// The learner is correcting a spoken reply the mic transcribed wrongly.
+	const [editingSpoken, setEditingSpoken] = useState(false)
 	const [goalDismissed, setGoalDismissed] = useState(false)
 
 	const timer = useTimer()
@@ -144,6 +147,9 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 
 	const convStateRef = useRef(convState)
 	convStateRef.current = convState
+
+	const editingSpokenRef = useRef(editingSpoken)
+	editingSpokenRef.current = editingSpoken
 
 	// Silence detection: when user stops speaking
 	const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -422,7 +428,9 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 	// ── Watch for user finishing speaking (silence detection) ──
 	useEffect(() => {
 		if (convState !== "listening") return
-		if (!autoSend) return
+		// Never auto-send while the learner is fixing the text — Chrome can still
+		// deliver a late final result after the mic stops.
+		if (!autoSend || editingSpoken) return
 
 		const currentFinal = speech.finalTranscript
 
@@ -433,7 +441,11 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 			clearSilenceTimer()
 			silenceTimerRef.current = setTimeout(() => {
 				const latestTranscript = speechRef.current.finalTranscript.trim()
-				if (convStateRef.current === "listening" && latestTranscript) {
+				if (
+					convStateRef.current === "listening" &&
+					!editingSpokenRef.current &&
+					latestTranscript
+				) {
 					submitUserTurnRef.current(latestTranscript)
 				}
 			}, AUTO_SEND_SILENCE_MS)
@@ -441,11 +453,14 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 
 		// Only clean up on unmount or when convState leaves "listening"
 		// Do NOT clean up when finalTranscript changes (that would kill the timer)
-	}, [convState, speech.finalTranscript, autoSend, clearSilenceTimer])
+	}, [convState, speech.finalTranscript, autoSend, editingSpoken, clearSilenceTimer])
 
 	// Clean up silence timer when leaving listening state
 	useEffect(() => {
-		if (convState !== "listening") clearSilenceTimer()
+		if (convState !== "listening") {
+			clearSilenceTimer()
+			setEditingSpoken(false)
+		}
 	}, [convState, clearSilenceTimer])
 
 	// ── Sync Realtime agentState → convState ──
@@ -563,12 +578,44 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 			if (!text || convStateRef.current !== "listening") return
 			setTypedText("")
 			setTypedInputOpen(false)
+			setEditingSpoken(false)
 
 			if (useRealtime) sendRealtimeText(text)
 			else submitUserTurn(text)
 		},
 		[typedText, useRealtime, sendRealtimeText, submitUserTurn],
 	)
+
+	// ── Fix a misheard reply: move the transcript into the text field ──
+	// Stops the mic (and any pending auto-send) so nothing new lands while the
+	// learner corrects the words, then sends through the typed-reply path.
+	const handleEditSpokenReply = useCallback(() => {
+		if (!liveTranscript || convStateRef.current !== "listening") return
+		clearSilenceTimer()
+		speech.stopListening()
+		speech.resetTranscript()
+		lastFinalTranscriptRef.current = ""
+		setTypedText(liveTranscript)
+		setEditingSpoken(true)
+		setTypedInputOpen(true)
+	}, [liveTranscript, clearSilenceTimer, speech])
+
+	// ── Close the text field; abandoning an edit turns the mic back on ──
+	const closeTypedInput = useCallback(() => {
+		setTypedInputOpen(false)
+		if (!editingSpokenRef.current) return
+		setEditingSpoken(false)
+		setTypedText("")
+		if (convStateRef.current === "listening") {
+			lastFinalTranscriptRef.current = ""
+			speech.startListening()
+		}
+	}, [speech])
+
+	const handleToggleTypedInput = useCallback(() => {
+		if (typedInputOpen) closeTypedInput()
+		else setTypedInputOpen(true)
+	}, [typedInputOpen, closeTypedInput])
 
 	// ── Interrupt AI mid-response ──
 	const handleInterrupt = useCallback(() => {
@@ -738,7 +785,8 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 	}, [])
 
 	const captionLastMsg = visibleMessages[visibleMessages.length - 1]
-	const captionInterim = convState === "listening" ? liveTranscript : ""
+	const captionInterim =
+		convState === "listening" && !editingSpoken ? liveTranscript : ""
 	const videoCaption =
 		captionInterim ? { text: captionInterim, role: "user" as const }
 		: captionLastMsg ?
@@ -752,13 +800,16 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 
 	// Something has been heard this turn that the learner can send.
 	const hasSpokenReply =
-		convState === "listening" && !!(speech.finalTranscript || speech.transcript)
+		convState === "listening" &&
+		!editingSpoken &&
+		!!(speech.finalTranscript || speech.transcript)
 
 	// Shared by the mobile transcript sheet and the md+ side panel.
 	const transcriptProps = {
 		messages: visibleMessages,
 		interimTranscript: captionInterim,
-		isActivelyListening: convState === "listening" && !!speech.transcript,
+		isActivelyListening:
+			convState === "listening" && !editingSpoken && !!speech.transcript,
 		isVisible: showCaptions,
 		tutorName: tutor.name,
 		nativeLanguage,
@@ -849,7 +900,8 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 
 					{/* Send button — realtime hybrid mode */}
 					{useRealtime && hasSpokenReply && (
-						<div className="shrink-0 flex items-center justify-center">
+						<div className="shrink-0 flex items-center justify-center gap-3">
+							<EditReplyButton onClick={handleEditSpokenReply} />
 							<SendReplyButton onClick={handleRealtimeSend} />
 						</div>
 					)}
@@ -888,7 +940,12 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 								Auto-send {autoSend ? "on" : "off"}
 							</button>
 
-							{hasSpokenReply && <SendReplyButton onClick={handleManualSend} />}
+							{hasSpokenReply && (
+								<>
+									<EditReplyButton onClick={handleEditSpokenReply} />
+									<SendReplyButton onClick={handleManualSend} />
+								</>
+							)}
 						</div>
 					)}
 
@@ -909,7 +966,7 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 							onToggleCamera={handleToggleCamera}
 							cameraOn={cameraOn}
 							onStop={handleStop}
-							onToggleTypedInput={() => setTypedInputOpen((v) => !v)}
+							onToggleTypedInput={handleToggleTypedInput}
 							typedInputOpen={typedInputOpen}
 							typedInputDisabled={convState !== "listening"}
 							onInterrupt={useRealtime ? handleInterrupt : undefined}
@@ -921,14 +978,30 @@ export const VoiceCallView: FC<VoiceCallViewProps> = ({
 					{typedInputOpen && convState === "listening" && (
 						<form
 							onSubmit={handleTypedSubmit}
-							className="shrink-0 mx-auto flex w-full max-w-md items-center gap-2"
+							className="shrink-0 mx-auto flex w-full max-w-md flex-wrap items-center gap-2"
 						>
+							{editingSpoken && (
+								<p className="w-full text-center text-xs text-white/55">
+									Fix any words that were heard wrong, then send.
+								</p>
+							)}
 							<input
 								type="text"
 								value={typedText}
 								onChange={(e) => setTypedText(e.target.value)}
-								aria-label="Type a message"
-								placeholder="Type instead…"
+								onKeyDown={(e) => {
+									if (e.key === "Escape") {
+										e.preventDefault()
+										closeTypedInput()
+									}
+								}}
+								// Put the caret after the text so a misheard word is quick to fix.
+								onFocus={(e) => {
+									const end = e.currentTarget.value.length
+									e.currentTarget.setSelectionRange(end, end)
+								}}
+								aria-label={editingSpoken ? "Edit your reply" : "Type a message"}
+								placeholder={editingSpoken ? "Your reply…" : "Type instead…"}
 								lang={locale}
 								autoComplete="off"
 								autoFocus
