@@ -6,6 +6,7 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useFeedbackDialog } from "@/components/FeedbackProvider";
 import { VoucherButton } from "@/components/VoucherButton";
+import { resetMixpanel } from "@/lib/mixpanel";
 import {
   Home,
   Mic,
@@ -63,6 +64,7 @@ export const AppSidebar: FC<AppSidebarProps> = ({ userEmail, avatarUrl }) => {
     // Loaded on demand so supabase-js stays out of the app shell's first-load JS.
     const { createClient } = await import("@/lib/supabase/client");
     await createClient().auth.signOut();
+    resetMixpanel();
     router.push("/");
     router.refresh();
   }
