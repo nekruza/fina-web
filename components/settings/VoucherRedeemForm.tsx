@@ -1,15 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
 interface VoucherRedeemFormProps {
   /** Called after a successful redeem so the caller can refetch the profile. */
   onRedeemed: () => void;
+  /** Wrapper classes. Defaults to the divider-topped block used on settings. */
+  className?: string;
+  /** Focus the code field on mount, for dialogs opened to redeem a code. */
+  autoFocus?: boolean;
 }
 
-export function VoucherRedeemForm({ onRedeemed }: VoucherRedeemFormProps) {
+const SECTION_CLASS = "mt-6 border-t border-line pt-5";
+
+export function VoucherRedeemForm({ onRedeemed, className = SECTION_CLASS, autoFocus = false }: VoucherRedeemFormProps) {
+  // Unique per instance: the sidebar dialog and the settings form can be mounted together.
+  const inputId = useId();
+  const errorId = `${inputId}-error`;
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [redeeming, setRedeeming] = useState(false);
@@ -41,13 +50,13 @@ export function VoucherRedeemForm({ onRedeemed }: VoucherRedeemFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mt-6 border-t border-line pt-5" noValidate>
-      <label htmlFor="voucher-code" className="text-[11px] font-semibold uppercase tracking-[0.1em] text-sub">
+    <form onSubmit={handleSubmit} className={className} noValidate>
+      <label htmlFor={inputId} className="text-[11px] font-semibold uppercase tracking-[0.1em] text-sub">
         Have a voucher code?
       </label>
       <div className="mt-2 flex flex-col gap-2 sm:flex-row">
         <input
-          id="voucher-code"
+          id={inputId}
           name="voucherCode"
           type="text"
           value={code}
@@ -57,11 +66,12 @@ export function VoucherRedeemForm({ onRedeemed }: VoucherRedeemFormProps) {
           }}
           placeholder="FINA-XXXX-XXXX"
           maxLength={40}
+          autoFocus={autoFocus}
           autoComplete="off"
           autoCapitalize="characters"
           spellCheck={false}
           aria-invalid={!!error}
-          aria-describedby={error ? "voucher-code-error" : undefined}
+          aria-describedby={error ? errorId : undefined}
           className="w-full rounded-xl border border-line bg-surface px-4 py-3 font-mono text-sm uppercase text-ink placeholder:font-sans placeholder:normal-case placeholder:text-sub focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand sm:max-w-xs"
         />
         <button
@@ -74,7 +84,7 @@ export function VoucherRedeemForm({ onRedeemed }: VoucherRedeemFormProps) {
         </button>
       </div>
       {error && (
-        <p id="voucher-code-error" role="alert" className="mt-1.5 text-xs text-hot">
+        <p id={errorId} role="alert" className="mt-1.5 text-xs text-hot">
           {error}
         </p>
       )}

@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useFeedbackDialog } from "@/components/FeedbackProvider";
+import { VoucherButton } from "@/components/VoucherButton";
 import {
   Home,
   Mic,
@@ -106,6 +107,7 @@ export const AppSidebar: FC<AppSidebarProps> = ({ userEmail, avatarUrl }) => {
           </nav>
 
           <div className="mt-auto border-t border-line pt-4">
+            {isAuthed && <VoucherButton variant="sidebar" />}
             <button
               type="button"
               onClick={feedbackDialog.open}
@@ -156,13 +158,16 @@ export const AppSidebar: FC<AppSidebarProps> = ({ userEmail, avatarUrl }) => {
           <span className="font-display text-xl text-ink">Fina</span>
         </Link>
         {isAuthed ? (
-          <Link
-            href="/app/settings"
-            aria-label="Open settings"
-            className="rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"
-          >
-            <UserAvatar avatarUrl={avatarUrl} initials={initials} size="sm" />
-          </Link>
+          <div className="flex items-center gap-3">
+            <VoucherButton variant="header" />
+            <Link
+              href="/app/settings"
+              aria-label="Open settings"
+              className="rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"
+            >
+              <UserAvatar avatarUrl={avatarUrl} initials={initials} size="sm" />
+            </Link>
+          </div>
         ) : (
           <Link href="/login" className="rounded-md text-sm font-semibold text-accent-brand focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent-brand">
             Sign in
