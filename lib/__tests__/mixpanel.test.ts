@@ -11,6 +11,7 @@ jest.mock("mixpanel-browser", () => ({
     identify: jest.fn(),
     alias: jest.fn(),
     reset: jest.fn(),
+    register: jest.fn(),
     people: { set: jest.fn() },
   },
 }));
@@ -21,6 +22,7 @@ const mp = mixpanel as unknown as {
   identify: jest.Mock;
   alias: jest.Mock;
   reset: jest.Mock;
+  register: jest.Mock;
   people: { set: jest.Mock };
 };
 
@@ -120,7 +122,11 @@ describe("initMixpanel", () => {
 
     expect(mp.init.mock.invocationCallOrder[0]).toBeLessThan(mp.identify.mock.invocationCallOrder[0]);
     expect(mp.identify.mock.invocationCallOrder[0]).toBeLessThan(mp.track.mock.invocationCallOrder[0]);
-    expect(mp.people.set).toHaveBeenCalledWith({ $email: "test@example.com" });
+    expect(mp.people.set).toHaveBeenCalledWith({
+      $email: "test@example.com",
+      $name: "test@example.com",
+      $user_id: "user-1",
+    });
   });
 });
 
@@ -175,11 +181,21 @@ describe("after init", () => {
     });
   });
 
-  it("identifies the user and sets their email on the profile", async () => {
+  it("identifies the user and labels their profile with their email", async () => {
     (await initialised()).identify("user-1", "test@example.com");
 
     expect(mp.identify).toHaveBeenCalledWith("user-1");
-    expect(mp.people.set).toHaveBeenCalledWith({ $email: "test@example.com" });
+    expect(mp.people.set).toHaveBeenCalledWith({
+      $email: "test@example.com",
+      $name: "test@example.com",
+      $user_id: "user-1",
+    });
+  });
+
+  it("attaches the email to every later event and replay", async () => {
+    (await initialised()).identify("user-1", "test@example.com");
+
+    expect(mp.register).toHaveBeenCalledWith({ email: "test@example.com", user_id: "user-1" });
   });
 
   it("aliases the anonymous device id to the user id", async () => {

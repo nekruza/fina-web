@@ -16,6 +16,7 @@ import { VoucherRedeemForm } from "@/components/settings/VoucherRedeemForm";
 import type { TutorId } from "@/lib/tutors";
 import { isBillingPlan, type BillingPlan } from "@/lib/billing";
 import { saveUserPreferences } from "@/lib/user-preferences";
+import { resetMixpanel } from "@/lib/mixpanel";
 import { ProUpgradeDialog } from "@/components/ProUpgradeDialog";
 import {
   Dialog,
@@ -217,6 +218,7 @@ export default function SettingsPage() {
   async function handleSignOut() {
     const supabase = createClient();
     await supabase.auth.signOut();
+    resetMixpanel();
     router.push("/");
     router.refresh();
   }
@@ -232,6 +234,7 @@ export default function SettingsPage() {
       }
       const supabase = createClient();
       await supabase.auth.signOut();
+      resetMixpanel();
       router.replace("/");
     } catch {
       toast.error("Failed to delete account. Please try again.");

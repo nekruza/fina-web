@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Loader2 } from "lucide-react";
+import { Check, Gift, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
@@ -10,6 +11,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { VoucherRedeemForm } from "@/components/settings/VoucherRedeemForm";
+import { QUERY_KEYS } from "@/lib/queries/keys";
+import { track } from "@/lib/mixpanel";
 import { FREE_CONVERSATIONS, FREE_GENERATIONS, PLANS, type BillingPlan } from "@/lib/billing";
 
 export type ProUpgradeReason = "conversations" | "generations" | "upgrade";
@@ -46,6 +50,8 @@ const PLAN_ORDER: BillingPlan[] = ["yearly", "monthly"];
 export function ProUpgradeDialog({ open, onClose, reason, initialPlan = "yearly" }: ProUpgradeDialogProps) {
   const [plan, setPlan] = useState<BillingPlan>(initialPlan);
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [showVoucher, setShowVoucher] = useState(false);
+  const queryClient = useQueryClient();
 
   // Reset the selected plan to `initialPlan` whenever the dialog transitions
   // to open — adjusted during render (React's documented pattern for
@@ -54,7 +60,16 @@ export function ProUpgradeDialog({ open, onClose, reason, initialPlan = "yearly"
   const [wasOpen, setWasOpen] = useState(open);
   if (open !== wasOpen) {
     setWasOpen(open);
-    if (open) setPlan(initialPlan);
+    if (open) {
+      setPlan(initialPlan);
+      setShowVoucher(false);
+    }
+  }
+
+  function handleRedeemed() {
+    void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.profile });
+    void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.conversationUsage });
+    onClose();
   }
 
   async function handleUpgrade() {
@@ -159,6 +174,22 @@ export function ProUpgradeDialog({ open, onClose, reason, initialPlan = "yearly"
             {isRedirecting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
             Upgrade to Pro
           </button>
+          {showVoucher ? (
+            <VoucherRedeemForm onRedeemed={handleRedeemed} className="mt-2 rounded-2xl bg-cream p-4" autoFocus />
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setShowVoucher(true);
+                track("voucher_entry_opened", { source: "upgrade_dialog" });
+              }}
+              disabled={isRedirecting}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-full text-sm font-semibold text-accent-brand transition hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand disabled:opacity-60"
+            >
+              <Gift className="h-4 w-4" aria-hidden />
+              Have a voucher code?
+            </button>
+          )}
           <button
             type="button"
             onClick={onClose}

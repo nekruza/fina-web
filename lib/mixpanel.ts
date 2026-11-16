@@ -49,10 +49,17 @@ export function track(event: string, properties?: Record<string, unknown>) {
   withMixpanel((mp) => mp.track(event, properties));
 }
 
+/**
+ * Ties this browser to the signed-in user. Mixpanel labels a user by `$name`,
+ * then `$email`, and only falls back to the raw distinct id when neither is on
+ * the profile, so both are set. The email is also registered as a super
+ * property so every event and session replay row carries it directly.
+ */
 export function identify(userId: string, email: string) {
   withMixpanel((mp) => {
     mp.identify(userId);
-    mp.people.set({ $email: email });
+    mp.people.set({ $email: email, $name: email, $user_id: userId });
+    mp.register({ email, user_id: userId });
   });
 }
 
